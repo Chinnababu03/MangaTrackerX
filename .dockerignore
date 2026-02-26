@@ -1,0 +1,15 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+csv_files/
+src/pipeline/
+src/utilities/extractors.py
+src/utilities/page_source.py
+assets/
+*.md
+pyrightconfig.json
+.agent/
