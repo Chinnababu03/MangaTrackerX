@@ -22,7 +22,12 @@ function statusClass(status = '') {
 function card(manga) {
     const chaps = (manga.latest_chapters || []).slice(0, 2);
     const chapHtml = chaps.map(c =>
-        `<div class="chapter-pill">Ch. ${c.chapter_num}</div>`
+        `<a class="chapter-pill"
+        href="${c.chapter_url || '#'}"
+        target="_blank"
+        rel="noopener"
+        data-chapter-link="true"
+      >Ch. ${c.chapter_num}</a>`
     ).join('');
 
     return `
@@ -108,6 +113,8 @@ export async function renderMangaList() {
 
     // Card click → detail
     document.getElementById('manga-grid').addEventListener('click', (e) => {
+        // Chapter pill link — let it open naturally, don't navigate to detail
+        if (e.target.closest('[data-chapter-link]')) return;
         const card = e.target.closest('.manga-card');
         if (card) navigateToDetail(decodeURIComponent(card.dataset.title));
     });
