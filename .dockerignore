@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.git/
+.venv/
+__pycache__/
+api/
+src/pipeline/
+src/utilities/
+csv_files/
+assets/
+pyrightconfig.json
+.agent/
+*.py
+*.md
