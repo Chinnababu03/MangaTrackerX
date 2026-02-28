@@ -1,0 +1,15 @@
+# Exclude from gcloud run deploy --source upload
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+.git/
+csv_files/
+src/pipeline/
+src/utilities/extractors.py
+src/utilities/page_source.py
+assets/
+*.log
+.agent/
+pyrightconfig.json

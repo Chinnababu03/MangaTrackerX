@@ -16,11 +16,8 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy only the application code needed at runtime
+# Copy only the API application code
 COPY api/ ./api/
-COPY src/utilities/database_connection.py ./src/utilities/database_connection.py
-COPY src/__init__.py ./src/__init__.py
-COPY src/utilities/__init__.py ./src/utilities/__init__.py
 
 # Cloud Run injects PORT env var — default to 8080
 ENV PORT=8080

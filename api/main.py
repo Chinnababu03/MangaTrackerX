@@ -8,6 +8,9 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.inmemory import InMemoryBackend
 
 from api.routers import manga, links
 from api.db import get_client
@@ -15,10 +18,11 @@ from api.db import get_client
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup — warm up the motor connection pool
-    get_client()
+    # Startup
+    get_client()                                    # warm up motor connection pool
+    FastAPICache.init(InMemoryBackend(), prefix="mangax")  # enable response caching
     yield
-    # Shutdown — close the motor connection
+    # Shutdown
     get_client().close()
 
 
@@ -32,10 +36,11 @@ app = FastAPI(
 # Allow all origins in dev; restrict to your frontend domain in prod
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 
+app.add_middleware(GZipMiddleware, minimum_size=1000)  # compress responses > 1 KB
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
