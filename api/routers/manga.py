@@ -40,7 +40,7 @@ async def list_manga(
     Use skip/limit for pagination.
     """
     col = get_collection("MANGA_DATA")
-    # $slice:2 — return only the first 2 items from latest_chapters array
+    # $slice:2 returns only the first 2 chapters for card view
     projection = {"latest_chapters": {"$slice": 2}}
     cursor = col.find({}, projection).skip(skip).limit(limit)
     return [_serialize(doc) async for doc in cursor]
