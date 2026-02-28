@@ -346,15 +346,56 @@ button {
 
 .chapter-pill {
   font-size: .75rem;
-  color: var(--accent-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
+  border-radius: 4px;
+  padding: .15rem .4rem;
+  font-weight: 600;
+  display: inline-block;
 }
 
-.chapter-pill:hover {
-  text-decoration: underline;
+/* New / unread */
+.pill-new {
+  color: #3fb950;
+  background: rgba(63, 185, 80, .1);
+  border: 1px solid rgba(63, 185, 80, .25);
+}
+
+.pill-new:hover {
+  background: rgba(63, 185, 80, .2);
+}
+
+/* Already read */
+.pill-read {
+  color: var(--text-muted);
+  background: rgba(139, 148, 158, .08);
+  border: 1px solid rgba(139, 148, 158, .2);
+  text-decoration: line-through;
+  opacity: .7;
+}
+
+.pill-read:hover {
+  opacity: 1;
+}
+
+/* ─── Sort dropdown ───────────────────────────────────────────────────────── */
+.sort-select {
+  padding: .55rem .9rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: .9rem;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .2s;
+}
+
+.sort-select:focus {
+  border-color: var(--accent);
 }
 
 /* ─── Pagination ─────────────────────────────────────────────────────────── */
