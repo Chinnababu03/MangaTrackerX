@@ -1,5 +1,5 @@
 // api.js — centralised API client
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const BASE = import.meta.env.VITE_API_URL || 'https://mangax-api-502816012135.us-central1.run.app';
 
 async function request(path) {
   const res = await fetch(`${BASE}${path}`);
