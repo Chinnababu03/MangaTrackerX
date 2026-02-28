@@ -58,7 +58,7 @@ async def root():
         "endpoints": {
             "GET  /manga":             "Paginated manga list (skip, limit)",
             "GET  /manga/search?q=":   "Search manga by title",
-            "GET  /manga/{id}":        "Full manga detail + chapters",
+            "GET  /manga/{title}":     "Full manga detail + chapters",
             "GET  /links":             "All tracked manga URLs",
             "POST /links":             "Add a new manga URL to track",
             "GET  /health":            "Health check",

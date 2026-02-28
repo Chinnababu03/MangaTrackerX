@@ -59,7 +59,6 @@ async def search_manga(
 
 
 @router.get("/{title}", response_model=MangaDetail)
-@cache(expire=600)  # 10 min — chapter data rarely changes mid-day
 async def get_manga(title: str):
     """Return a single manga with full chapter list by title (case-insensitive exact match)."""
     col = get_collection("MANGA_DATA")
