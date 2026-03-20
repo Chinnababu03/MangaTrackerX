@@ -1,53 +1,39 @@
-// toast.js — Stacked, auto-dismissing toast notification system
-let container;
-
-function getContainer() {
+// toast.js — Premium notification system
+export function showToast(title, message, type = 'info') {
+  let container = document.getElementById('toast-container');
   if (!container) {
-    container = document.getElementById('toast-container');
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'toast-container';
-      document.body.appendChild(container);
-    }
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    document.body.appendChild(container);
   }
-  return container;
-}
 
-const ICONS = {
-  success: '✓',
-  error:   '✕',
-  info:    'ℹ',
-};
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  
+  const icons = {
+    success: '✅',
+    error: '❌',
+    info: 'ℹ️'
+  };
 
-const TITLES = {
-  success: 'Success',
-  error:   'Error',
-  info:    'Info',
-};
-
-export function showToast(message, type = 'info', duration = 4000) {
-  const c = getContainer();
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.innerHTML = `
-    <span class="toast-icon">${ICONS[type] ?? 'ℹ'}</span>
+  toast.innerHTML = `
+    <div class="toast-icon">${icons[type] || '🔔'}</div>
     <div class="toast-body">
-      <div class="toast-title">${TITLES[type] ?? 'Notice'}</div>
+      <div class="toast-title">${title}</div>
       <div class="toast-msg">${message}</div>
     </div>
-    <button class="toast-dismiss" aria-label="Dismiss">✕</button>
+    <button class="toast-dismiss">&times;</button>
   `;
 
-  el.querySelector('.toast-dismiss').addEventListener('click', () => dismiss(el));
-  c.appendChild(el);
+  container.appendChild(toast);
 
-  const timer = setTimeout(() => dismiss(el), duration);
-  el._timer = timer;
-  return el;
-}
+  const dismiss = () => {
+    toast.classList.add('out');
+    setTimeout(() => toast.remove(), 400);
+  };
 
-function dismiss(el) {
-  clearTimeout(el._timer);
-  el.classList.add('out');
-  el.addEventListener('animationend', () => el.remove(), { once: true });
+  toast.querySelector('.toast-dismiss').onclick = dismiss;
+
+  // Auto-dismiss after 5s
+  setTimeout(dismiss, 5000);
 }

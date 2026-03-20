@@ -1,39 +1,41 @@
-// api.js — centralised API client
-const BASE = import.meta.env.VITE_API_URL || 'https://mangax-api-502816012135.us-central1.run.app';
-
-async function request(path) {
-  const res = await fetch(`${BASE}${path}`);
-  if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
-  return res.json();
-}
-
-async function post(path, body) {
-  const res = await fetch(`${BASE}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `API ${res.status}`);
-  }
-  return res.json();
-}
+// api.js — Centralized API client
+const BASE_URL = 'https://mangax-api-502816012135.us-central1.run.app';
 
 export const api = {
-  /** GET /manga — full metadata + 2 latest chapters */
-  getMangaList: (skip = 0, limit = 50) =>
-    request(`/manga?skip=${skip}&limit=${limit}`),
+  async getMangaList(skip = 0, limit = 50) {
+    const res = await fetch(`${BASE_URL}/manga?skip=${skip}&limit=${limit}`);
+    if (!res.ok) throw new Error('Failed to fetch manga list');
+    return res.json();
+  },
 
-  /** GET /manga/search — partial title match */
-  searchManga: (q, limit = 20) =>
-    request(`/manga/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+  async getMangaDetail(title) {
+    const res = await fetch(`${BASE_URL}/manga/${encodeURIComponent(title)}`);
+    if (!res.ok) throw new Error('Manga not found');
+    return res.json();
+  },
 
-  /** GET /manga/{title} — full document with all chapters */
-  getMangaDetail: (title) =>
-    request(`/manga/${encodeURIComponent(title)}`),
+  async searchManga(query) {
+    const res = await fetch(`${BASE_URL}/manga/search?q=${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error('Search failed');
+    return res.json();
+  },
 
-  /** POST /links — add a new manga URL */
-  addLink: (url) =>
-    post('/links', { manga_url: url }),
+  async addLink(url) {
+    const res = await fetch(`${BASE_URL}/links`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ manga_url: url }) // Corrected payload field
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Unknown error' }));
+      throw new Error(err.detail || 'Failed to add link');
+    }
+    return res.json();
+  },
+
+  async health() {
+    const res = await fetch(`${BASE_URL}/health`);
+    if (!res.ok) throw new Error('API is down');
+    return res.json();
+  }
 };
