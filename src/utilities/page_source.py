@@ -30,20 +30,24 @@ def get_page_source(manga_url: str, timeout: int = 15) -> str | None:
         Raw HTML string on success, or None on a hard failure.
     """
     co = ChromiumOptions()
-    co.headless(_HEADLESS)
 
-    if _HEADLESS:
-        # Reduce headless fingerprint exposure as much as possible
-        co.set_argument("--disable-blink-features=AutomationControlled")
-        co.set_argument("--no-sandbox")
-        co.set_argument("--disable-dev-shm-usage")
-        co.set_argument("--window-size=1920,1080")
-        co.set_argument("--disable-gpu")
-        co.set_user_agent(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/122.0.0.0 Safari/537.36"
-        )
+    # ── Browser mode ──────────────────────────────────────────────
+    # Headed mode  → bypasses Cloudflare (browser window opens briefly)
+    co.headless(False)
+    # Headless mode → no visible window, but Cloudflare sites will block it
+    # co.headless(True)
+
+    # ── Anti-fingerprint flags (only needed in headless mode) ─────
+    # co.set_argument("--disable-blink-features=AutomationControlled")
+    # co.set_argument("--no-sandbox")
+    # co.set_argument("--disable-dev-shm-usage")
+    # co.set_argument("--window-size=1920,1080")
+    # co.set_argument("--disable-gpu")
+    # co.set_user_agent(
+    #     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    #     "AppleWebKit/537.36 (KHTML, like Gecko) "
+    #     "Chrome/122.0.0.0 Safari/537.36"
+    # )
 
     page = None
     try:
