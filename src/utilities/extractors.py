@@ -1,4 +1,4 @@
-"""
+﻿"""
 extractors.py
 ─────────────
 All BeautifulSoup parsing logic consolidated into one place.
@@ -186,7 +186,7 @@ def _parse_chapter_num(chapter_el) -> float:
         return 0.0
     text = anchor.text.strip()
     matches = _CHAPTER_NUM_RE.findall(text)
-    return float(matches[-1]) if matches else 0.0
+    return float(matches[0]) if matches else 0.0
 
 
 def extract_chapters(soup: BeautifulSoup, since: float = 0.0) -> list[dict]:
@@ -226,3 +226,4 @@ def extract_chapters(soup: BeautifulSoup, since: float = 0.0) -> list[dict]:
         })
 
     return new_chapters
+
