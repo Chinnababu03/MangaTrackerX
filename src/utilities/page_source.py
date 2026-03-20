@@ -1,19 +1,15 @@
 import logging
 import time
 
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from DrissionPage import ChromiumPage, ChromiumOptions
 
 logger = logging.getLogger(__name__)
 
 
 def get_page_source(manga_url: str, timeout: int = 15) -> str | None:
     """
-    Fetch the fully-rendered HTML of a manga page using a headless Chrome browser.
+    Fetch the fully-rendered HTML of a manga page using DrissionPage (headed)
+    to bypass Cloudflare Bot Protection on sites like manhuaus.org.
 
     Args:
         manga_url: The URL of the manga homepage to scrape.
@@ -22,48 +18,53 @@ def get_page_source(manga_url: str, timeout: int = 15) -> str | None:
     Returns:
         Raw HTML string on success, or None on a hard failure.
     """
-    options = Options()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument(
-        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36"
-    )
-    options.page_load_strategy = "eager"
-
-    driver = webdriver.Chrome(options=options)
+    co = ChromiumOptions()
+    # Must use headed mode to avoid instant Cloudflare blocking
+    co.headless(False)
+    
+    # Hide WebDriver characteristics (built-in to DrissionPage)
+    page = None
     try:
-        driver.get(manga_url)
+        page = ChromiumPage(co)
+        page.get(manga_url)
+
+        # 1. Cloudflare verification waiting
+        # If we see "Just a moment", wait for the title to change
+        if "Just a moment" in page.title or "Security verification" in page.html:
+            logger.info(f"[page_source] Cloudflare check detected on {manga_url}, waiting...")
+            # We wait longer here because the CF challenge can take 5-10s
+            page.wait.title_change('Just a moment...', timeout=20)
 
         # Some sites (e.g. kunmanga) need extra time for JS hydration
         if "kunmanga" in manga_url:
             time.sleep(5)
 
+        # 2. Page Content waiting
         # Wait for chapter list or summary panel — whichever appears first
-        WebDriverWait(driver, timeout).until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "div.page-content-listing, div.tab-summary")
+        # ele_loaded takes a CSS selector natively
+        ele = page.wait.eles_loaded('css:div.page-content-listing, div.tab-summary', timeout=timeout)
+        
+        if not ele:
+             # Page didn't render expected elements in time — return partial HTML
+            # and warn so Step 3 can surface the issue clearly.
+            html = page.html
+            logger.warning(
+                f"[page_source] Timeout after {timeout}s waiting for content on {manga_url} "
+                f"— returning partial HTML ({len(html):,} chars). "
+                "Page may be a 404 or use an unsupported layout."
             )
-        )
+            return html
 
-        return driver.page_source
-
-    except TimeoutException:
-        # Page didn't render expected elements in time — return partial HTML
-        # and warn so Step 3 can surface the issue clearly.
-        html = driver.page_source
-        logger.warning(
-            f"[page_source] Timeout after {timeout}s waiting for content on {manga_url} "
-            f"— returning partial HTML ({len(html):,} chars). "
-            "Page may be a 404 or use an unsupported layout."
-        )
-        return html
+        return page.html
 
     except Exception as exc:
         logger.error(f"[page_source] Hard failure fetching {manga_url}: {exc}")
         return None
 
     finally:
-        driver.quit()
+        if page:
+            try:
+                page.quit()
+            except Exception as quit_exc:
+                logger.debug(f"Error during browser quit: {quit_exc}")
+

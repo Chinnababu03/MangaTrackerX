@@ -36,12 +36,17 @@ def _placeholder_image() -> dict:
     placeholder_path = (
         Path(__file__).resolve().parents[2] / "assets" / "images" / "placeholder.jpg"
     )
+    # Simple 1x1 transparent pixel as extreme fallback if real placeholder is missing
+    fallback_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lMREFUe2NoYAAAAA8AAQCt6f8AAAAASUVORK5CYII="
+    
     try:
+        if not placeholder_path.exists():
+             return {"image": None, "en_manga_image": fallback_b64}
         with open(placeholder_path, "rb") as f:
             b64 = base64.b64encode(f.read()).decode("utf-8")
         return {"image": None, "en_manga_image": b64}
-    except FileNotFoundError:
-        return {"image": None, "en_manga_image": ""}
+    except Exception:
+        return {"image": None, "en_manga_image": fallback_b64}
 
 
 def get_image(soup: BeautifulSoup, manga_title: str) -> dict:
@@ -71,12 +76,19 @@ def get_image(soup: BeautifulSoup, manga_title: str) -> dict:
     if not src:
         return _placeholder_image()
 
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Referer": f"https://{urlparse(src).netloc}/"
+    }
+
     try:
-        resp = requests.get(src, timeout=10)
+        resp = requests.get(src, headers=headers, timeout=10)
         resp.raise_for_status()
         b64 = base64.b64encode(resp.content).decode("utf-8")
         return {"image": src, "en_manga_image": b64}
     except requests.RequestException:
+        # Try once more with the exact manga site as referer if possible
+        # (Though we don't have the original page URL here easily without changing signature)
         return _placeholder_image()
 
 

@@ -4,4 +4,4 @@ pandas>=2.2
 pymongo[srv]>=4.7
 python-dotenv>=1.0
 requests>=2.31
-selenium>=4.20
+DrissionPage>=4.1.1.2
