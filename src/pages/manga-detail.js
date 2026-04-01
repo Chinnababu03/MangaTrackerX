@@ -18,7 +18,7 @@ function formatDate(ds) {
 export async function renderMangaDetail(title) {
   const app = document.getElementById('app');
   app.className = 'page-enter';
-  
+
   app.innerHTML = `
     <div class="detail-page">
       <div id="hero-mount">
@@ -83,7 +83,7 @@ export async function renderMangaDetail(title) {
             <div class="detail-meta-row">
               <div class="meta-stat">
                 <div class="meta-stat-label">Status</div>
-                <div class="meta-stat-val" style="color:${manga.manga_status?.toLowerCase().includes('ongoing') ? 'var(--emerald)':'#fff'}">
+                <div class="meta-stat-val" style="color:${manga.manga_status?.toLowerCase().includes('ongoing') ? 'var(--emerald)' : '#fff'}">
                   ${manga.manga_status || 'Unknown'}
                 </div>
               </div>
@@ -110,7 +110,6 @@ export async function renderMangaDetail(title) {
     chList.innerHTML = chapters.map((ch, idx) => `
       <a href="${ch.chapter_url}" target="_blank" class="chapter-item" style="animation: slideIn 0.4s ease forwards; animation-delay: ${idx * 0.03}s; opacity:0;">
         <span class="ch-number">Ch. ${ch.chapter_num}</span>
-        <span class="ch-title">${manga.manga_title}</span>
         <div class="ch-right">
           ${idx < 2 ? '<span class="ch-badge-new">Latest</span>' : ''}
           <span class="ch-date">${formatDate(ch.chapter_added)}</span>
