@@ -83,7 +83,7 @@ export async function renderMangaDetail(title) {
             <div class="detail-meta-row">
               <div class="meta-stat">
                 <div class="meta-stat-label">Status</div>
-                <div class="meta-stat-val" style="color:${manga.manga_status?.toLowerCase().includes('ongoing') ? 'var(--emerald)' : '#fff'}">
+                <div class="meta-stat-val" style="color:${manga.manga_status?.toLowerCase().includes('ongoing') ? 'var(--emerald)' : 'var(--text-primary)'}">
                   ${manga.manga_status || 'Unknown'}
                 </div>
               </div>

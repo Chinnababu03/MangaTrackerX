@@ -1,5 +1,11 @@
 // main.js — App entry point: navbar + SPA router
 import './style.css';
+
+// Initialize theme
+const savedTheme = localStorage.getItem('theme') || 'dark';
+if (savedTheme === 'light') {
+  document.documentElement.setAttribute('data-theme', 'light');
+}
 import { renderHome }        from './pages/home.js';
 import { renderMangaList }   from './pages/manga-list.js';
 import { renderMangaDetail } from './pages/manga-detail.js';
@@ -10,6 +16,10 @@ import appLogoUrl            from '../assets/images/excited.png';
 function renderNav(active) {
   const navEl = document.getElementById('navbar');
   if (!navEl) return;
+
+  const currentTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  const themeIcon = currentTheme === 'light' ? '🌙' : '☀️';
+
   navEl.innerHTML = `
     <nav class="nav">
       <a class="nav-brand" href="/" aria-label="MangaTrackerX Home">
@@ -19,6 +29,9 @@ function renderNav(active) {
         MangaTrackerX
       </a>
       <div class="nav-links">
+        <button id="theme-toggle" class="btn-ghost" style="padding: 0.5rem; font-size: 1.25rem; border: none; cursor: pointer; background: transparent;" aria-label="Toggle theme" title="Toggle theme">
+          ${themeIcon}
+        </button>
         <a href="/"      class="${active === 'home'  ? 'active' : ''}">Home</a>
         <a href="/manga" class="${active === 'manga' ? 'active' : ''}">Library</a>
         <button class="nav-cta" id="nav-add-btn">+ Track</button>
@@ -26,6 +39,19 @@ function renderNav(active) {
     </nav>`;
 
   document.getElementById('nav-add-btn')?.addEventListener('click', openAddModal);
+
+  const themeToggle = document.getElementById('theme-toggle');
+  themeToggle?.addEventListener('click', () => {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const newTheme = isLight ? 'dark' : 'light';
+    if (newTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    localStorage.setItem('theme', newTheme);
+    themeToggle.innerHTML = newTheme === 'light' ? '🌙' : '☀️';
+  });
 }
 
 // ── Router ─────────────────────────────────────────────────────────
