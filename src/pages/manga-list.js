@@ -34,6 +34,17 @@ export async function renderMangaList() {
           <span class="library-count" id="lib-count"></span>
         </div>
         <div class="toolbar-right">
+          <div class="sort-wrap">
+            <select id="manga-sort" class="sort-select">
+              <option value="default">Recently Updated</option>
+              <option value="unread">Unread First</option>
+              <option value="read">Read First</option>
+              <option value="az">Alphabetical (A-Z)</option>
+              <option value="za">Alphabetical (Z-A)</option>
+              <option value="ch-desc">Most Chapters</option>
+              <option value="ch-asc">Least Chapters</option>
+            </select>
+          </div>
           <div class="search-wrap">
             <span class="search-icon">🔍</span>
             <input type="text" id="manga-search" class="search-input" placeholder="Search by title..." autocomplete="off">
@@ -47,6 +58,72 @@ export async function renderMangaList() {
     </div>`;
 
   let fullList = [];
+  let currentSort = 'default';
+  let currentQuery = '';
+
+  const getReadHistory = () => JSON.parse(localStorage.getItem('mangaReadHistory') || '{}');
+  const isRead = (title, chapterNum) => {
+    const history = getReadHistory();
+    return history[title]?.includes(String(chapterNum)) || false;
+  };
+  
+  // Expose function globally for the HTML onclick handlers
+  window.markReadaAndGo = (e, title, chapterNum, url) => {
+    e.stopPropagation();
+    const history = getReadHistory();
+    const chStr = String(chapterNum);
+    if (!history[title]) history[title] = [];
+    if (!history[title].includes(chStr)) {
+      history[title].push(chStr);
+      localStorage.setItem('mangaReadHistory', JSON.stringify(history));
+    }
+    window.open(url, '_blank');
+    applyFilters(); // Re-render to update colors and sort order
+  };
+
+  const hasUnread = (manga) => {
+    const chapters = manga.latest_chapters || [];
+    if (chapters.length === 0) return false;
+    // Check if the latest chapter is unread
+    return !isRead(manga.manga_title, chapters[0].chapter_num);
+  };
+
+  const applyFilters = () => {
+    let filtered = fullList.filter(m => m.manga_title.toLowerCase().includes(currentQuery));
+    
+    filtered.sort((a, b) => {
+      if (currentSort === 'default') {
+        return a._originalIndex - b._originalIndex;
+      } else if (currentSort === 'unread') {
+        const aUnread = hasUnread(a);
+        const bUnread = hasUnread(b);
+        if (aUnread && !bUnread) return -1;
+        if (!aUnread && bUnread) return 1;
+        return a._originalIndex - b._originalIndex;
+      } else if (currentSort === 'read') {
+        const aUnread = hasUnread(a);
+        const bUnread = hasUnread(b);
+        if (!aUnread && bUnread) return -1;
+        if (aUnread && !bUnread) return 1;
+        return a._originalIndex - b._originalIndex;
+      } else if (currentSort === 'az') {
+        return a.manga_title.localeCompare(b.manga_title);
+      } else if (currentSort === 'za') {
+        return b.manga_title.localeCompare(a.manga_title);
+      } else if (currentSort === 'ch-desc') {
+        const chA = parseFloat(a.latest_chapters?.[0]?.chapter_num) || 0;
+        const chB = parseFloat(b.latest_chapters?.[0]?.chapter_num) || 0;
+        return chB - chA;
+      } else if (currentSort === 'ch-asc') {
+        const chA = parseFloat(a.latest_chapters?.[0]?.chapter_num) || 0;
+        const chB = parseFloat(b.latest_chapters?.[0]?.chapter_num) || 0;
+        return chA - chB;
+      }
+      return 0;
+    });
+
+    updateGrid(filtered);
+  };
 
   const updateGrid = (list) => {
     const grid = document.getElementById('manga-grid');
@@ -68,7 +145,7 @@ export async function renderMangaList() {
     grid.innerHTML = list.map((m, idx) => {
       const statusClass = m.manga_status?.toLowerCase().includes('ongoing') ? 'status-ongoing' : 'status-completed';
       const chapters = m.latest_chapters || [];
-      const latest3  = chapters.slice(0, 3);
+      const latest2  = chapters.slice(0, 2);
       
       return `
         <div class="manga-card" style="transition-delay: ${idx * 0.05}s" onclick="location.href='/manga/${encodeURIComponent(m.manga_title)}'">
@@ -76,13 +153,15 @@ export async function renderMangaList() {
             <img src="${imgSrc(m)}" alt="${m.manga_title}" loading="lazy">
             <div class="cover-gradient"></div>
             <div class="cover-status ${statusClass}">${m.manga_status || 'Unknown'}</div>
-            <div class="cover-ch-count">📚 ${chapters.length} Chs</div>
           </div>
           <div class="card-body">
             <h3 class="card-title">${m.manga_title}</h3>
             <div class="card-site">${new URL(m.manga_url).hostname}</div>
             <div class="card-chapters">
-              ${latest3.map(ch => `<span class="chapter-pill">Ch. ${ch.chapter_num}</span>`).join('')}
+              ${latest2.map(ch => {
+                const readClass = isRead(m.manga_title, ch.chapter_num) ? 'read' : '';
+                return `<button class="chapter-pill ${readClass}" onclick="markReadaAndGo(event, '${m.manga_title.replace(/'/g, "\\'")}', '${ch.chapter_num}', '${ch.chapter_url}')">Ch. ${ch.chapter_num}</button>`;
+              }).join('')}
             </div>
           </div>
         </div>`;
@@ -95,14 +174,21 @@ export async function renderMangaList() {
   };
 
   try {
-    fullList = await api.getMangaList(0, 500);
-    updateGrid(fullList);
+    const rawList = await api.getMangaList(0, 200);
+    // Assign original index for default sorting
+    fullList = rawList.map((m, i) => ({ ...m, _originalIndex: i }));
+    applyFilters();
 
     const searchInput = document.getElementById('manga-search');
     searchInput?.addEventListener('input', (e) => {
-      const q = e.target.value.toLowerCase().trim();
-      const filtered = fullList.filter(m => m.manga_title.toLowerCase().includes(q));
-      updateGrid(filtered);
+      currentQuery = e.target.value.toLowerCase().trim();
+      applyFilters();
+    });
+
+    const sortSelect = document.getElementById('manga-sort');
+    sortSelect?.addEventListener('change', (e) => {
+      currentSort = e.target.value;
+      applyFilters();
     });
   } catch (err) {
     document.getElementById('manga-grid').innerHTML = `<div class="error-msg">Failed to load library: ${err.message}</div>`;

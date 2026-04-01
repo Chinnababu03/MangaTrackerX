@@ -79,7 +79,7 @@ export async function renderHome() {
   // Fetch stats in background
   try {
     const [mangaList, health] = await Promise.allSettled([
-      api.getMangaList(0, 500),
+      api.getMangaList(0, 200),
       api.health(),
     ]);
 

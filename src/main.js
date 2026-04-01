@@ -12,7 +12,9 @@ function renderNav(active) {
   navEl.innerHTML = `
     <nav class="nav">
       <a class="nav-brand" href="/" aria-label="MangaTrackerX Home">
-        <div class="nav-brand-icon">📚</div>
+        <div class="nav-brand-icon" style="display: flex; align-items: center; justify-content: center;">
+          <img src="/assets/images/excited.png" alt="MangaTrackerX Logo" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-purple);" />
+        </div>
         MangaTrackerX
       </a>
       <div class="nav-links">
