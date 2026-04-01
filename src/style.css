@@ -943,6 +943,13 @@ body {
   .stat-card:nth-child(even) { border-left: 1px solid var(--border); }
   .library-toolbar { flex-direction: column; gap: 1.5rem; align-items: stretch; }
   .search-wrap { width: 100%; }
+  
+  .manga-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+  .card-body { padding: 0.8rem; }
+  .card-title { font-size: 0.85rem; }
+  .card-site { margin-bottom: 0.5rem; }
+  .chapter-pill { padding: 0.2rem 0.4rem; font-size: 10px; }
+
   .detail-hero-content { grid-template-columns: 1fr; text-align: center; }
   .detail-cover { max-width: 260px; margin: 0 auto; }
   .detail-tags, .detail-meta-row, .detail-actions { justify-content: center; }
