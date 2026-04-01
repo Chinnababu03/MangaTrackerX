@@ -8,7 +8,6 @@ api/
 src/pipeline/
 src/utilities/
 csv_files/
-assets/
 pyrightconfig.json
 .agent/
 *.py
