@@ -4,6 +4,7 @@ import { renderHome }        from './pages/home.js';
 import { renderMangaList }   from './pages/manga-list.js';
 import { renderMangaDetail } from './pages/manga-detail.js';
 import { openAddModal }      from './modal.js';
+import appLogoUrl            from '../assets/images/excited.png';
 
 // ── Navbar ────────────────────────────────────────────────────────
 function renderNav(active) {
@@ -13,7 +14,7 @@ function renderNav(active) {
     <nav class="nav">
       <a class="nav-brand" href="/" aria-label="MangaTrackerX Home">
         <div class="nav-brand-icon" style="display: flex; align-items: center; justify-content: center;">
-          <img src="/assets/images/excited.png" alt="MangaTrackerX Logo" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-purple);" />
+          <img src="${appLogoUrl}" alt="MangaTrackerX Logo" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-purple);" />
         </div>
         MangaTrackerX
       </a>

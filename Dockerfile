@@ -7,6 +7,7 @@ RUN npm install
 
 COPY index.html vite.config.js* ./
 COPY src/ ./src/
+COPY assets/ ./assets/
 
 # VITE_API_URL is baked into the bundle at build time
 ARG VITE_API_URL
