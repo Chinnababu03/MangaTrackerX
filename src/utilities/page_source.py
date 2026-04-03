@@ -15,43 +15,42 @@ logger = logging.getLogger(__name__)
 _HEADLESS = os.getenv("HEADLESS", "false").lower() in ("1", "true", "yes")
 
 
-def get_page_source(manga_url: str, timeout: int = 15) -> str | None:
+def create_browser() -> ChromiumPage:
+    """
+    Initialise and return a new ChromiumPage instance.
+
+    Call this once per run in the outer pipeline loop to avoid the
+    ~2-3 second browser-startup overhead on every URL.
+    """
+    co = ChromiumOptions()
+    co.headless(_HEADLESS)
+    return ChromiumPage(co)
+
+
+def get_page_source(
+    manga_url: str,
+    timeout: int = 15,
+    page: ChromiumPage | None = None,
+) -> str | None:
     """
     Fetch the fully-rendered HTML of a manga page using DrissionPage.
-
-    Uses headed mode by default to bypass Cloudflare Bot Protection.
-    Set HEADLESS=true in .env to run without a visible window (CF sites may fail).
 
     Args:
         manga_url: The URL of the manga homepage to scrape.
         timeout:   Seconds to wait for the expected DOM elements.
+        page:      Optional pre-created ChromiumPage to reuse across calls.
+                   When provided the browser is NOT quit after fetching—the
+                   caller is responsible for closing it.  When omitted a new
+                   browser is created and quit automatically.
 
     Returns:
         Raw HTML string on success, or None on a hard failure.
     """
-    co = ChromiumOptions()
+    owns_browser = page is None
+    if owns_browser:
+        page = create_browser()
 
-    # ── Browser mode ──────────────────────────────────────────────
-    # Headed mode  → bypasses Cloudflare (browser window opens briefly)
-    co.headless(False)
-    # Headless mode → no visible window, but Cloudflare sites will block it
-    # co.headless(True)
-
-    # ── Anti-fingerprint flags (only needed in headless mode) ─────
-    # co.set_argument("--disable-blink-features=AutomationControlled")
-    # co.set_argument("--no-sandbox")
-    # co.set_argument("--disable-dev-shm-usage")
-    # co.set_argument("--window-size=1920,1080")
-    # co.set_argument("--disable-gpu")
-    # co.set_user_agent(
-    #     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    #     "AppleWebKit/537.36 (KHTML, like Gecko) "
-    #     "Chrome/122.0.0.0 Safari/537.36"
-    # )
-
-    page = None
     try:
-        page = ChromiumPage(co)
         page.get(manga_url)
 
         # 1. Cloudflare verification waiting
@@ -89,7 +88,7 @@ def get_page_source(manga_url: str, timeout: int = 15) -> str | None:
         return None
 
     finally:
-        if page:
+        if owns_browser and page:
             try:
                 page.quit()
             except Exception as quit_exc:

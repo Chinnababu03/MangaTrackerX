@@ -16,6 +16,7 @@ Usage:
 
 import json
 import time
+import itertools
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from bs4 import BeautifulSoup
@@ -34,6 +35,10 @@ CHAPTER_CAP = 2000
 # Number of threads for parallel HTML parsing + image fetching in Step 3.
 # Capped to avoid hammering cover-image servers.
 MAX_WORKERS = 6
+
+# Number of PAGESOURCE documents loaded into memory at a time.
+# Keeps peak RAM usage bounded — each document can be 1–3 MB of raw HTML.
+CHUNK_SIZE = 50
 
 
 # ─────────────────────────────────────────────
@@ -168,8 +173,7 @@ def process_manga():
     manga_data_col = get_collection("get_manga_data")
     links_col      = get_collection("get_links")
 
-    pagesource_docs = list(pagesource_col.find({}))
-    total = len(pagesource_docs)
+    total = pagesource_col.count_documents({})
 
     summary = {
         "total": total,
@@ -181,7 +185,7 @@ def process_manga():
 
     logger.info(
         f"[STEP 3] Processing {total} cached page source(s) "
-        f"(parallel, max_workers={MAX_WORKERS})."
+        f"(parallel, max_workers={MAX_WORKERS}, chunk_size={CHUNK_SIZE})."
     )
 
     # ── inner worker — runs inside the thread pool ────────────────────────
@@ -201,39 +205,57 @@ def process_manga():
         return _process_new_manga(url, soup, manga_data_col)
     # ──────────────────────────────────────────────────────────────────────
 
+    def _chunked(cursor, size: int):
+        """Yield successive chunks of `size` from a PyMongo cursor."""
+        chunk = []
+        for doc in cursor:
+            chunk.append(doc)
+            if len(chunk) == size:
+                yield chunk
+                chunk = []
+        if chunk:
+            yield chunk
+
+    processed = 0
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        futures = {pool.submit(_process_one, doc): doc for doc in pagesource_docs}
+        cursor = pagesource_col.find({}, no_cursor_timeout=False)
+        try:
+            for chunk in _chunked(cursor, CHUNK_SIZE):
+                futures = {pool.submit(_process_one, doc): doc for doc in chunk}
 
-        for i, fut in enumerate(as_completed(futures), start=1):
-            try:
-                result = fut.result()
-            except Exception as exc:
-                doc = futures[fut]
-                result = {
-                    "url":    doc.get("manga_url"),
-                    "status": "error",
-                    "reason": str(exc),
-                }
+                for fut in as_completed(futures):
+                    processed += 1
+                    try:
+                        result = fut.result()
+                    except Exception as exc:
+                        doc = futures[fut]
+                        result = {
+                            "url":    doc.get("manga_url"),
+                            "status": "error",
+                            "reason": str(exc),
+                        }
 
-            url    = result.get("url")
-            status = result.get("status", "error")
+                    url    = result.get("url")
+                    status = result.get("status", "error")
 
-            print(Fore.CYAN + f"[STEP 3] ({i}/{total}) Done: {url} → {status}")
+                    print(Fore.CYAN + f"[STEP 3] ({processed}/{total}) Done: {url} → {status}")
 
-            # Tally — main thread only, no lock needed
-            if status in summary:
-                summary[status] += 1
-            else:
-                summary["errors"] += 1
+                    # Tally — main thread only, no lock needed
+                    if status in summary:
+                        summary[status] += 1
+                    else:
+                        summary["errors"] += 1
 
-            # Backfill title into LINKS
-            _backfill_title(result.get("url") or "", result.get("title"), links_col)
+                    # Backfill title into LINKS
+                    _backfill_title(result.get("url") or "", result.get("title"), links_col)
 
-            # Per-manga log
-            level = "error" if status == "error" else "info"
-            getattr(logger, level)(
-                f"[MANGA-SUMMARY] {json.dumps(result, ensure_ascii=False, default=str)}"
-            )
+                    # Per-manga log
+                    level = "error" if status == "error" else "info"
+                    getattr(logger, level)(
+                        f"[MANGA-SUMMARY] {json.dumps(result, ensure_ascii=False, default=str)}"
+                    )
+        finally:
+            cursor.close()
 
     logger.success(f"[SUMMARY] {json.dumps(summary)}")
     return summary
