@@ -86,14 +86,14 @@ def fetch_pagesources():
         for i, url in enumerate(pending_list, start=1):
             print(Fore.CYAN + f"[STEP 2] ({i}/{len(pending_list)}) Fetching: {url}")
 
-            # If the URL is harimanga.me, we immediately skip querying it and start checking mirrors
-            is_harimanga_me = "harimanga.me" in url
+            # If the URL is on a known-dead domain, skip fetching and go straight to mirrors
+            is_dead_domain = "harimanga.me" in url or "manhuaus.org" in url
 
             html = None
-            if not is_harimanga_me:
+            if not is_dead_domain:
                 html = get_page_source(url, page=browser)
             else:
-                logger.info(f"[STEP 2] URL {url} is on deprecated harimanga.me. Skipping original fetch and trying mirrors directly.")
+                logger.info(f"[STEP 2] URL {url} is on a deprecated domain (harimanga.me / manhuaus.org). Skipping original fetch and trying mirrors directly.")
 
             # Normalize and trace the loaded/redirected URL
             actual_url = browser.url.rstrip("/") if html else url.rstrip("/")
