@@ -9,31 +9,24 @@ export function showToast(title, message, type = 'info') {
 
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  
-  const icons = {
-    success: '✅',
-    error: '❌',
-    info: 'ℹ️'
-  };
+  toast.setAttribute('role', 'alert');
+  toast.setAttribute('aria-live', 'polite');
 
   toast.innerHTML = `
-    <div class="toast-icon">${icons[type] || '🔔'}</div>
+    <div class="toast-stripe"></div>
     <div class="toast-body">
       <div class="toast-title">${title}</div>
       <div class="toast-msg">${message}</div>
     </div>
-    <button class="toast-dismiss">&times;</button>
-  `;
+    <button class="toast-dismiss" aria-label="Dismiss notification">&#x2715;</button>`;
 
   container.appendChild(toast);
 
   const dismiss = () => {
     toast.classList.add('out');
-    setTimeout(() => toast.remove(), 400);
+    setTimeout(() => toast.remove(), 380);
   };
 
   toast.querySelector('.toast-dismiss').onclick = dismiss;
-
-  // Auto-dismiss after 5s
   setTimeout(dismiss, 5000);
 }
