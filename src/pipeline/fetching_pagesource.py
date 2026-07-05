@@ -82,10 +82,62 @@ def fetch_pagesources():
 
     browser = create_browser()
     try:
+        manga_data_col = get_collection("get_manga_data")
         for i, url in enumerate(pending_list, start=1):
             print(Fore.CYAN + f"[STEP 2] ({i}/{len(pending_list)}) Fetching: {url}")
 
-            html = get_page_source(url, page=browser)
+            # If the URL is harimanga.me, we immediately skip querying it and start checking mirrors
+            is_harimanga_me = "harimanga.me" in url
+
+            html = None
+            if not is_harimanga_me:
+                html = get_page_source(url, page=browser)
+            else:
+                logger.info(f"[STEP 2] URL {url} is on deprecated harimanga.me. Skipping original fetch and trying mirrors directly.")
+
+            # Normalize and trace the loaded/redirected URL
+            actual_url = browser.url.rstrip("/") if html else url.rstrip("/")
+            original_url_normalized = url.rstrip("/")
+
+            # If the browser was redirected to a new domain/path, update DB references
+            if html and actual_url != original_url_normalized:
+                logger.info(f"[STEP 2] URL redirected from {url} to {actual_url}. Updating DB references...")
+                try:
+                    links_col.update_one({"manga_url": url}, {"$set": {"manga_url": actual_url}})
+                    manga_data_col.update_one({"manga_url": url}, {"$set": {"manga_url": actual_url}})
+                    logger.info(f"[STEP 2] Successfully updated DB URL references to final redirected URL: {actual_url}")
+                except Exception as db_exc:
+                    logger.error(f"[STEP 2] Failed to update DB references for redirect: {db_exc}")
+
+            # If fetch failed or was skipped, try fallback mirrors
+            if not html:
+                slug = url.rstrip("/").split("/")[-1].strip()
+                mirrors = [
+                    f"https://www.clanmanhwa.com/manga/{slug}",
+                    f"https://coffeemanga.ink/manga/{slug}",
+                    f"https://www.harimanga.co.uk/manga/{slug}",
+                ]
+                logger.info(f"[STEP 2] Fetch failed or skipped for original URL: {url}. Trying fallback mirrors...")
+                for mirror in mirrors:
+                    logger.info(f"[STEP 2] Trying mirror: {mirror}")
+                    mirror_html = get_page_source(mirror, page=browser)
+                    if mirror_html:
+                        logger.success(f"[STEP 2] Mirror fetch succeeded: {mirror}")
+                        html = mirror_html
+                        actual_url = browser.url.rstrip("/")
+
+                        # Update references in DB collections to the working mirror URL
+                        try:
+                            # Update in LINKS collection
+                            links_col.update_one({"manga_url": url}, {"$set": {"manga_url": actual_url}})
+                            # Update in MANGA_DATA collection (if exists)
+                            manga_data_col.update_one({"manga_url": url}, {"$set": {"manga_url": actual_url}})
+                            logger.info(f"[STEP 2] Successfully updated DB URL references from {url} to {actual_url}")
+                        except Exception as db_exc:
+                            logger.error(f"[STEP 2] Failed to update DB references: {db_exc}")
+                        break
+                    else:
+                        logger.warning(f"[STEP 2] Mirror fetch failed: {mirror}")
 
             if not html:
                 logger.error(f"[STEP 2] Failed to fetch page source for: {url}")
@@ -93,13 +145,13 @@ def fetch_pagesources():
             else:
                 operations.append(
                     UpdateOne(
-                        {"manga_url": url},
-                        {"$setOnInsert": {"manga_url": url, "page_source": html}},
+                        {"manga_url": actual_url},
+                        {"$setOnInsert": {"manga_url": actual_url, "page_source": html}},
                         upsert=True,
                     )
                 )
                 summary["fetched"] += 1
-                logger.info(f"[STEP 2] Fetched OK — {url} ({len(html):,} chars)")
+                logger.info(f"[STEP 2] Fetched OK — {actual_url} ({len(html):,} chars)")
 
             # Flush every COMMIT_EVERY successful fetches
             if len(operations) >= COMMIT_EVERY:

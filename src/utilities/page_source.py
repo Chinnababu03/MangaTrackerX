@@ -44,14 +44,18 @@ def get_page_source(
                    browser is created and quit automatically.
 
     Returns:
-        Raw HTML string on success, or None on a hard failure.
+        Raw HTML string on success, or None on a failure.
     """
     owns_browser = page is None
     if owns_browser:
         page = create_browser()
 
     try:
-        page.get(manga_url)
+        try:
+            page.get(manga_url, timeout=timeout)
+        except Exception as e:
+            logger.warning(f"[page_source] page.get() timed out or failed for {manga_url}: {e}")
+            return None
 
         # 1. Cloudflare verification waiting
         if "Just a moment" in page.title or "Security verification" in page.html:
@@ -63,7 +67,10 @@ def get_page_source(
                 )
             else:
                 logger.info(f"[page_source] Cloudflare check detected on {manga_url}, waiting...")
-            page.wait.title_change("Just a moment...", timeout=20)
+            try:
+                page.wait.title_change("Just a moment...", timeout=20)
+            except Exception as wait_exc:
+                logger.warning(f"[page_source] Wait title_change timed out: {wait_exc}")
 
         # Some sites (e.g. kunmanga) need extra time for JS hydration
         if "kunmanga" in manga_url:
@@ -73,13 +80,11 @@ def get_page_source(
         ele = page.wait.eles_loaded("css:div.page-content-listing, div.tab-summary", timeout=timeout)
 
         if not ele:
-            html = page.html
             logger.warning(
-                f"[page_source] Timeout after {timeout}s waiting for content on {manga_url} "
-                f"— returning partial HTML ({len(html):,} chars). "
-                "Page may be a 404 or use an unsupported layout."
+                f"[page_source] Timeout after {timeout}s waiting for content on {manga_url}. "
+                "Page may be a 404, Cloudflare blocked, or use an unsupported layout."
             )
-            return html
+            return None
 
         return page.html
 

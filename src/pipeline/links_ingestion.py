@@ -21,9 +21,16 @@ logger = setup_logging(name="links_ingestion")
 CSV_PATH = Path(__file__).resolve().parents[2] / "csv_files" / "manga_links.csv"
 
 
+def get_slug(url: str) -> str:
+    """Extract the slug (last path component) of a manga URL."""
+    return url.rstrip("/").split("/")[-1].strip()
+
+
 def load_csv_links(filepath: Path) -> set[str]:
-    """Read links column from CSV and return a set of normalised URLs."""
+    """Read links column from CSV, filtering out invalid rows and returning a set of normalised URLs."""
     df = pd.read_csv(filepath, usecols=["links"])
+    # Ensure we only load lines that start with http to skip headers, blank lines, or typos like "links"
+    df = df[df["links"].str.startswith("http", na=False)]
     df["links"] = df["links"].str.rstrip("/").str.strip()
     return set(df["links"].dropna().tolist())
 
@@ -38,20 +45,32 @@ def ingest_links():
     """
     Main entry point for Step 1.
 
-    Reads the CSV, computes the delta against the DB, and bulk-upserts
-    only the new URLs so this step is always safe to re-run.
+    Reads the CSV, computes the delta against the DB using slug-based matching,
+    and bulk-upserts only the new URLs so this step is always safe to re-run.
     """
     collection = get_collection("get_links")
 
     csv_links = load_csv_links(CSV_PATH)
     db_links  = load_db_links(collection)
-    new_links = csv_links - db_links
+    
+    # Map existing db slugs to their urls
+    db_slugs = {get_slug(url) for url in db_links}
+    
+    # Filter new links: only URLs whose slugs do not exist in the database
+    new_links = []
+    skipped_count = 0
+    for url in csv_links:
+        slug = get_slug(url)
+        if slug in db_slugs:
+            skipped_count += 1
+        else:
+            new_links.append(url)
 
     summary = {
         "checked":  len(csv_links),
         "new":      len(new_links),
         "inserted": 0,
-        "skipped":  len(db_links & csv_links),
+        "skipped":  skipped_count,
         "errors":   0,
     }
 
