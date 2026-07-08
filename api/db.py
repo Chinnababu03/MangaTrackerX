@@ -55,3 +55,26 @@ def get_collection(name_env: str):
     if not col_name:
         raise ValueError(f"Env var '{name_env}' is not set.")
     return get_db()[col_name]
+
+
+async def init_db_indexes():
+    """Initialise database indexes asynchronously for optimized queries."""
+    try:
+        links_col = get_collection("LINKS")
+        manga_data_col = get_collection("MANGA_DATA")
+
+        # 1. Unique index on manga_url to avoid duplicates in links
+        await links_col.create_index("manga_url", unique=True)
+
+        # 2. Unique index on manga_url to avoid duplicates in manga data
+        await manga_data_col.create_index("manga_url", unique=True)
+
+        # 3. Search index on manga_title for regex and sorting queries
+        await manga_data_col.create_index("manga_title")
+
+        # 4. Text index on manga_title for optimized full-text searching
+        await manga_data_col.create_index([("manga_title", "text")])
+
+        print("⚡ Database indexes initialized successfully.")
+    except Exception as e:
+        print(f"⚠️ Failed to initialize database indexes: {e}")

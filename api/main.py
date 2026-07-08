@@ -13,14 +13,32 @@ from fastapi_cache import FastAPICache
 from fastapi_cache.backends.inmemory import InMemoryBackend
 
 from api.routers import manga, links
-from api.db import get_client
+from api.db import get_client, init_db_indexes
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     get_client()                                    # warm up motor connection pool
-    FastAPICache.init(InMemoryBackend(), prefix="mangax")  # enable response caching
+    await init_db_indexes()                         # build DB indexes asynchronously
+    
+    # Cache initialization: Redis for production, InMemory for local development
+    redis_url = os.getenv("REDIS_URL")
+    if redis_url:
+        try:
+            from redis.asyncio import ConnectionPool, Redis
+            from fastapi_cache.backends.redis import RedisBackend
+            pool = ConnectionPool.from_url(redis_url)
+            redis_client = Redis(connection_pool=pool)
+            FastAPICache.init(RedisBackend(redis_client), prefix="mangax")
+            print("🚀 FastAPI Response Cache initialized with REDIS.")
+        except Exception as cache_exc:
+            print(f"⚠️ Failed to init Redis cache (falling back to memory): {cache_exc}")
+            FastAPICache.init(InMemoryBackend(), prefix="mangax")
+    else:
+        FastAPICache.init(InMemoryBackend(), prefix="mangax")
+        print("💾 FastAPI Response Cache initialized with IN-MEMORY backend.")
+        
     yield
     # Shutdown
     get_client().close()

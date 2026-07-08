@@ -14,7 +14,7 @@ import re
 from fastapi import APIRouter, HTTPException, Query
 from fastapi_cache.decorator import cache
 from api.db import get_collection
-from api.models import MangaCard, MangaDetail
+from api.models import MangaCard, MangaDetail, Chapter
 
 router = APIRouter(prefix="/manga", tags=["manga"])
 
@@ -82,3 +82,24 @@ async def get_manga(title: str):
     if not doc:
         raise HTTPException(status_code=404, detail=f"Manga '{title}' not found.")
     return _serialize(doc)
+
+
+@router.get("/{title}/chapters", response_model=list[Chapter])
+async def get_manga_chapters(
+    title: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
+):
+    """
+    Get paginated chapters for a specific manga.
+
+    Uses MongoDB slice projection to paginate the nested chapters array.
+    """
+    col = get_collection("MANGA_DATA")
+    doc = await col.find_one(
+        {"manga_title": {"$regex": f"^{re.escape(title)}$", "$options": "i"}},
+        {"latest_chapters": {"$slice": [skip, limit]}, "_id": False}
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail=f"Manga '{title}' not found.")
+    return doc.get("latest_chapters", [])
