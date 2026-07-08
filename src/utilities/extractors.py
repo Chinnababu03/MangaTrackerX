@@ -1,4 +1,4 @@
-﻿"""
+"""
 extractors.py
 ─────────────
 All BeautifulSoup parsing logic consolidated into one place.
@@ -49,7 +49,7 @@ def _placeholder_image() -> dict:
         return {"image": None, "en_manga_image": fallback_b64}
 
 
-def get_image(soup: BeautifulSoup, manga_title: str) -> dict:
+def get_image(soup: BeautifulSoup, manga_title: str, url: str | None = None) -> dict:
     """
     Extract the manga cover image URL and convert it to a base64 string.
 
@@ -76,9 +76,11 @@ def get_image(soup: BeautifulSoup, manga_title: str) -> dict:
     if not src:
         return _placeholder_image()
 
+    # Dynamic Referer to bypass hotlink protection (requires the original page domain, not CDN)
+    referer = f"https://{urlparse(url).netloc}/" if url else f"https://{urlparse(src).netloc}/"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Referer": f"https://{urlparse(src).netloc}/"
+        "Referer": referer
     }
 
     try:
@@ -87,8 +89,7 @@ def get_image(soup: BeautifulSoup, manga_title: str) -> dict:
         b64 = base64.b64encode(resp.content).decode("utf-8")
         return {"image": src, "en_manga_image": b64}
     except requests.RequestException:
-        # Try once more with the exact manga site as referer if possible
-        # (Though we don't have the original page URL here easily without changing signature)
+        # Try once more with the host site as referer if fallback is needed
         return _placeholder_image()
 
 
@@ -149,7 +150,7 @@ def extract_metadata(soup: BeautifulSoup, url: str) -> dict | None:
 
         title   = title_el.get_text(strip=True)
         site    = urlparse(url).netloc
-        img     = get_image(soup, title)
+        img     = get_image(soup, title, url=url)
         details = get_summary_content(soup)
 
         return {
@@ -206,9 +207,9 @@ def extract_chapters(soup: BeautifulSoup, since: float = 0.0) -> list[dict]:
     # Prefer the scoped container if present, otherwise fall back to global search
     container = soup.find("div", class_="page-content-listing single-page")
     chapters = (
-        container.find_all("li", class_="wp-manga-chapter")
+        container.find_all(class_="wp-manga-chapter")
         if container
-        else soup.find_all("li", class_="wp-manga-chapter")
+        else soup.find_all(class_="wp-manga-chapter")
     )
 
     new_chapters = []

@@ -104,6 +104,7 @@ def _process_known_manga(url: str, soup: BeautifulSoup, existing: dict, manga_da
         return {"url": url, "title": title, "status": "no_update", "chapters_added": 0}
 
     try:
+        # Only push new chapters — NEVER overwrite en_manga_image (cover art preserved from first run)
         manga_data_col.update_one(
             {"manga_url": url},
             {

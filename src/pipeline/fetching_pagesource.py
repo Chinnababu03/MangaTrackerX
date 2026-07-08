@@ -86,14 +86,8 @@ def fetch_pagesources():
         for i, url in enumerate(pending_list, start=1):
             print(Fore.CYAN + f"[STEP 2] ({i}/{len(pending_list)}) Fetching: {url}")
 
-            # If the URL is on a known-dead domain, skip fetching and go straight to mirrors
-            is_dead_domain = "harimanga.me" in url or "manhuaus.org" in url
-
-            html = None
-            if not is_dead_domain:
-                html = get_page_source(url, page=browser)
-            else:
-                logger.info(f"[STEP 2] URL {url} is on a deprecated domain (harimanga.me / manhuaus.org). Skipping original fetch and trying mirrors directly.")
+            # Try the primary URL first (stored URL in DB — expected to be clanmanhwa)
+            html = get_page_source(url, page=browser)
 
             # Normalize and trace the loaded/redirected URL
             actual_url = browser.url.rstrip("/") if html else url.rstrip("/")
@@ -104,20 +98,21 @@ def fetch_pagesources():
                 logger.info(f"[STEP 2] URL redirected from {url} to {actual_url}. Updating DB references...")
                 try:
                     links_col.update_one({"manga_url": url}, {"$set": {"manga_url": actual_url}})
+                    # Update URL only — preserve en_manga_image (cover art cached from first run)
                     manga_data_col.update_one({"manga_url": url}, {"$set": {"manga_url": actual_url}})
-                    logger.info(f"[STEP 2] Successfully updated DB URL references to final redirected URL: {actual_url}")
+                    logger.info(f"[STEP 2] Updated DB URL references (cover image preserved): {actual_url}")
                 except Exception as db_exc:
                     logger.error(f"[STEP 2] Failed to update DB references for redirect: {db_exc}")
 
-            # If fetch failed or was skipped, try fallback mirrors
+            # If primary fetch failed, try fallback mirrors (coffeemanga & harimanga.co.uk only)
+            # clanmanhwa is intentionally excluded — it is the primary source
             if not html:
                 slug = url.rstrip("/").split("/")[-1].strip()
                 mirrors = [
-                    f"https://www.clanmanhwa.com/manga/{slug}",
                     f"https://coffeemanga.ink/manga/{slug}",
                     f"https://www.harimanga.co.uk/manga/{slug}",
                 ]
-                logger.info(f"[STEP 2] Fetch failed or skipped for original URL: {url}. Trying fallback mirrors...")
+                logger.warning(f"[STEP 2] Primary fetch failed for: {url}. Trying fallback mirrors...")
                 for mirror in mirrors:
                     logger.info(f"[STEP 2] Trying mirror: {mirror}")
                     mirror_html = get_page_source(mirror, page=browser)
@@ -126,21 +121,23 @@ def fetch_pagesources():
                         html = mirror_html
                         actual_url = browser.url.rstrip("/")
 
-                        # Update references in DB collections to the working mirror URL
+                        # Update URL references in DB to the working mirror URL
+                        # Crucially: we do NOT touch en_manga_image — cover art from first run is preserved
                         try:
-                            # Update in LINKS collection
                             links_col.update_one({"manga_url": url}, {"$set": {"manga_url": actual_url}})
-                            # Update in MANGA_DATA collection (if exists)
-                            manga_data_col.update_one({"manga_url": url}, {"$set": {"manga_url": actual_url}})
-                            logger.info(f"[STEP 2] Successfully updated DB URL references from {url} to {actual_url}")
+                            manga_data_col.update_one(
+                                {"manga_url": url},
+                                {"$set": {"manga_url": actual_url, "latest_chapters": []}},  # reset chapters only
+                            )
+                            logger.info(f"[STEP 2] Switched to mirror — URL + chapters reset, cover image preserved: {actual_url}")
                         except Exception as db_exc:
-                            logger.error(f"[STEP 2] Failed to update DB references: {db_exc}")
+                            logger.error(f"[STEP 2] Failed to update DB references for mirror: {db_exc}")
                         break
                     else:
                         logger.warning(f"[STEP 2] Mirror fetch failed: {mirror}")
 
             if not html:
-                logger.error(f"[STEP 2] Failed to fetch page source for: {url}")
+                logger.error(f"[STEP 2] All sources failed for: {url}")
                 summary["errors"] += 1
             else:
                 operations.append(
