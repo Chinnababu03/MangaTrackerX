@@ -121,15 +121,48 @@ def fetch_pagesources():
                         html = mirror_html
                         actual_url = browser.url.rstrip("/")
 
-                        # Update URL references in DB to the working mirror URL
-                        # Crucially: we do NOT touch en_manga_image — cover art from first run is preserved
+                        # Rewrite chapter URLs to the new mirror domain and update DB.
+                        # This preserves all chapter metadata — only the domain is swapped.
+                        # en_manga_image (cover art) is never touched.
                         try:
-                            links_col.update_one({"manga_url": url}, {"$set": {"manga_url": actual_url}})
+                            from urllib.parse import urlparse, urljoin
+
+                            new_origin  = f"{urlparse(actual_url).scheme}://{urlparse(actual_url).netloc}"
+                            old_origin  = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+
+                            # Load existing chapters and rewrite only their domain
+                            existing_doc    = manga_data_col.find_one({"manga_url": url}, {"latest_chapters": 1})
+                            existing_chaps  = (existing_doc or {}).get("latest_chapters", [])
+
+                            def _swap_domain(ch_url: str) -> str:
+                                """Replace old origin with new mirror origin; leave already-mirror URLs alone."""
+                                if not ch_url:
+                                    return ch_url
+                                if ch_url.startswith(old_origin):
+                                    return new_origin + ch_url[len(old_origin):]
+                                # Already absolute with a different domain (e.g. was previously migrated) — keep as-is
+                                return ch_url
+
+                            rewritten = [
+                                {**ch, "chapter_url": _swap_domain(ch.get("chapter_url", ""))}
+                                for ch in existing_chaps
+                            ]
+
+                            links_col.update_one(
+                                {"manga_url": url},
+                                {"$set": {"manga_url": actual_url}},
+                            )
                             manga_data_col.update_one(
                                 {"manga_url": url},
-                                {"$set": {"manga_url": actual_url, "latest_chapters": []}},  # reset chapters only
+                                {"$set": {
+                                    "manga_url":       actual_url,
+                                    "latest_chapters": rewritten,  # domain-rewritten, metadata preserved
+                                }},
                             )
-                            logger.info(f"[STEP 2] Switched to mirror — URL + chapters reset, cover image preserved: {actual_url}")
+                            logger.info(
+                                f"[STEP 2] Switched to mirror — manga_url + {len(rewritten)} chapter URL(s) "
+                                f"rewritten from {old_origin} → {new_origin}. Cover image preserved: {actual_url}"
+                            )
                         except Exception as db_exc:
                             logger.error(f"[STEP 2] Failed to update DB references for mirror: {db_exc}")
                         break

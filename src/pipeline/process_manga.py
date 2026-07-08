@@ -58,7 +58,7 @@ def _process_new_manga(url: str, soup: BeautifulSoup, manga_data_col) -> dict:
         logger.error(f"[STEP 3] Metadata extraction failed for new manga: {url}")
         return {"url": url, "status": "error", "reason": "metadata_extraction_failed"}
 
-    chapters = extract_chapters(soup, since=0.0)
+    chapters = extract_chapters(soup, since=0.0, manga_url=url)
     doc["latest_chapters"] = chapters
 
     try:
@@ -97,7 +97,7 @@ def _process_known_manga(url: str, soup: BeautifulSoup, existing: dict, manga_da
     stored_chapters = existing.get("latest_chapters", [])
     current_latest  = float(stored_chapters[0]["chapter_num"]) if stored_chapters else 0.0
 
-    new_chapters = extract_chapters(soup, since=current_latest)
+    new_chapters = extract_chapters(soup, since=current_latest, manga_url=url)
 
     if not new_chapters:
         logger.info(f"[STEP 3][KNOWN] {title} — no new chapters.")

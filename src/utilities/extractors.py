@@ -14,7 +14,7 @@ import base64
 import re
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -174,6 +174,27 @@ def extract_metadata(soup: BeautifulSoup, url: str) -> dict | None:
 # CHAPTER EXTRACTION
 # ─────────────────────────────────────────────
 
+def _resolve_href(href: str, manga_url: str) -> str:
+    """
+    Resolve a chapter href to a guaranteed full absolute URL.
+
+    Handles all four cases emitted by Madara-theme sites:
+      • Already absolute  → returned as-is
+      • Protocol-relative → https: prepended
+      • Root-relative     → origin prepended
+      • Bare relative     → urljoin against manga_url
+    """
+    if not href:
+        return ""
+    # Strip trailing whitespace / newlines that BeautifulSoup sometimes leaves
+    href = href.strip()
+    if href.startswith("http://") or href.startswith("https://"):
+        return href
+    if href.startswith("//"):
+        return "https:" + href
+    # Root-relative or bare-relative — resolve against the manga page URL
+    return urljoin(manga_url, href)
+
 def _parse_chapter_num(chapter_el) -> float:
     """
     Extract the chapter number as a float from a <li> chapter element.
@@ -190,7 +211,7 @@ def _parse_chapter_num(chapter_el) -> float:
     return float(matches[0]) if matches else 0.0
 
 
-def extract_chapters(soup: BeautifulSoup, since: float = 0.0) -> list[dict]:
+def extract_chapters(soup: BeautifulSoup, since: float = 0.0, manga_url: str = "") -> list[dict]:
     """
     Extract chapter entries that are newer than `since`.
 
@@ -198,11 +219,14 @@ def extract_chapters(soup: BeautifulSoup, since: float = 0.0) -> list[dict]:
     number <= `since` is encountered (Madara themes list newest first).
 
     Args:
-        soup:  Parsed HTML of the manga homepage.
-        since: The highest chapter number already stored. Pass 0.0 to get all.
+        soup:      Parsed HTML of the manga homepage.
+        since:     The highest chapter number already stored. Pass 0.0 to get all.
+        manga_url: The canonical URL of the manga page. Used to resolve relative
+                   chapter hrefs into guaranteed full absolute URLs.
 
     Returns:
         List of chapter dicts: [{"chapter_num": float, "chapter_url": str, "chapter_added": datetime}]
+        `chapter_url` is always a full absolute URL.
     """
     # Prefer the scoped container if present, otherwise fall back to global search
     container = soup.find("div", class_="page-content-listing single-page")
@@ -220,9 +244,11 @@ def extract_chapters(soup: BeautifulSoup, since: float = 0.0) -> list[dict]:
         anchor = ch.find("a")
         if not anchor:
             continue
+        raw_href = anchor.get("href", "")
+        full_url = _resolve_href(raw_href, manga_url) if manga_url else raw_href
         new_chapters.append({
             "chapter_num":   num,
-            "chapter_url":   anchor.get("href", ""),
+            "chapter_url":   full_url,
             "chapter_added": get_date_added(),
         })
 
