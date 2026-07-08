@@ -15,6 +15,9 @@ env/
 geckodriver*
 *.log
 
-# OS
-.DS_Store
-Thumbs.db
+# Node
+node_modules/
+dist/
+
+# Pipeline trackers
+tracker.txt

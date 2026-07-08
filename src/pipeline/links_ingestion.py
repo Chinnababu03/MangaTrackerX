@@ -28,7 +28,7 @@ CSV_PATH = Path(__file__).resolve().parents[2] / "csv_files" / "manga_links.csv"
 # ── TOGGLE OPTION: change from 'local' (fetch & ingest) to 'db' (use existing DB links) ──
 # Set to 'local' for the first run to ingest CSV, scrape titles, and cache page sources.
 # Set to 'db' for subsequent runs to skip CSV parsing and crawlers entirely.
-SOURCE_CHOICE = "local"
+SOURCE_CHOICE = "db"
 
 
 def get_slug(url: str) -> str:
