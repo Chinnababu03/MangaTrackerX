@@ -88,7 +88,7 @@ function buildCard(m, idx, isListView) {
       role="article" aria-label="${m.manga_title}" tabindex="0">
 
       <div class="cover-wrap">
-        <img src="${imgSrc(m)}" alt="${m.manga_title}" loading="lazy" decoding="async">
+        <img src="${imgSrc(m)}" alt="${m.manga_title}" loading="lazy" decoding="async" onerror="this.onerror=null; this.src='https://placehold.co/300x450/12101f/5c5a78?text=No+Cover';">
         <div class="cover-gradient"></div>
 
         ${rating ? `<div class="cover-rating"><span style="color:#fbbf24;">★</span> <strong>${parseFloat(rating).toFixed(1)}</strong></div>` : ''}

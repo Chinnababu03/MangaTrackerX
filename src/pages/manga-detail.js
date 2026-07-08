@@ -123,7 +123,7 @@ export async function renderMangaDetail(title) {
 
             <!-- Cover art -->
             <div class="detail-cover">
-              <img src="${imgUrl}" alt="${manga.manga_title}" />
+              <img src="${imgUrl}" alt="${manga.manga_title}" onerror="this.onerror=null; this.src='https://placehold.co/300x450/12101f/5c5a78?text=No+Cover';" />
             </div>
 
             <!-- Info panel -->
