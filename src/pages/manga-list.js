@@ -19,6 +19,19 @@ function safeHost(url) {
   } catch { return url; }
 }
 
+// Build a full chapter URL — if chapter_url is already absolute use it;
+// otherwise prepend the source domain from manga_url.
+function resolveChapterUrl(chapterUrl, mangaUrl) {
+  if (!chapterUrl) return '#';
+  if (/^https?:\/\//i.test(chapterUrl)) return chapterUrl;
+  try {
+    const { origin } = new URL(mangaUrl);
+    return origin + (chapterUrl.startsWith('/') ? '' : '/') + chapterUrl;
+  } catch {
+    return chapterUrl;
+  }
+}
+
 function statusClass(status) {
   const s = status?.toLowerCase() || '';
   if (s.includes('ongoing'))   return 'badge-ongoing';
@@ -62,10 +75,12 @@ function buildCard(m, idx, isListView) {
 
   const pillsHtml = latest2.map(ch => {
     const read = isRead(m.manga_title, ch.chapter_num);
+    const chUrl = resolveChapterUrl(ch.chapter_url, m.manga_url);
     return `<button class="ch-pill${read ? ' read' : ''}"
-      onclick="event.stopPropagation();window._mangaMarkRead(event,'${m.manga_title.replace(/'/g,"\\'")}','${ch.chapter_num}','${ch.chapter_url}')"
+      onclick="event.stopPropagation();window._mangaMarkRead(event,'${m.manga_title.replace(/'/g,"\\'")}','${ch.chapter_num}','${chUrl}')"
       aria-label="Chapter ${ch.chapter_num}">Ch.&nbsp;${ch.chapter_num}</button>`;
   }).join('');
+
 
   return `
     <div class="manga-card" style="transition-delay:${idx * 0.04}s"

@@ -17,6 +17,19 @@ function safeHost(url) {
   } catch { return url; }
 }
 
+// Build a full chapter URL — if chapter_url is already absolute use it;
+// otherwise prepend the source domain from manga_url.
+function resolveChapterUrl(chapterUrl, mangaUrl) {
+  if (!chapterUrl) return '#';
+  if (/^https?:\/\//i.test(chapterUrl)) return chapterUrl;
+  try {
+    const { origin } = new URL(mangaUrl);
+    return origin + (chapterUrl.startsWith('/') ? '' : '/') + chapterUrl;
+  } catch {
+    return chapterUrl;
+  }
+}
+
 function fmtDate(ds) {
   if (!ds) return '';
   try {
@@ -79,6 +92,10 @@ export async function renderMangaDetail(title) {
 
     const imgUrl   = imgSrc(manga);
     const chapters = [...(manga.latest_chapters || [])].sort((a, b) => parseChNum(b) - parseChNum(a));
+    // Resolve all chapter URLs upfront so they always point to the source website
+    chapters.forEach(ch => {
+      ch._resolvedUrl = resolveChapterUrl(ch.chapter_url, manga.manga_url);
+    });
     const maxCh    = chapters.length ? parseChNum(chapters[0]) : 0;
     const genres   = manga.manga_genre ? manga.manga_genre.split(',').map(g => g.trim()).filter(Boolean) : [];
     const isOngoing= manga.manga_status?.toLowerCase().includes('ongoing');
@@ -155,8 +172,8 @@ export async function renderMangaDetail(title) {
                   Read on Source
                 </a>
                 ${chapters.length ? `
-                <a href="${chapters[0].chapter_url}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary"
-                  onclick="window._detailMarkRead('${chapters[0].chapter_num}','${chapters[0].chapter_url}');event.preventDefault();">
+                <a href="${chapters[0]._resolvedUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary"
+                  onclick="window._detailMarkRead('${chapters[0].chapter_num}','${chapters[0]._resolvedUrl}');event.preventDefault();">
                   Latest Chapter
                 </a>` : ''}
               </div>
@@ -209,10 +226,10 @@ function renderChapters(chapters, mangaTitle) {
     const date    = fmtDate(ch.chapter_added);
 
     return `
-      <a href="${ch.chapter_url}" target="_blank" rel="noopener noreferrer"
+      <a href="${ch._resolvedUrl}" target="_blank" rel="noopener noreferrer"
         class="chapter-item"
         style="animation-delay:${Math.min(idx * 0.025, 0.6)}s"
-        onclick="window._detailMarkRead('${ch.chapter_num}','${ch.chapter_url}');event.preventDefault();"
+        onclick="window._detailMarkRead('${ch.chapter_num}','${ch._resolvedUrl}');event.preventDefault();"
         aria-label="Chapter ${ch.chapter_num}${read ? ' (read)' : ''}">
 
         <span class="ch-num">Ch. ${ch.chapter_num}</span>
