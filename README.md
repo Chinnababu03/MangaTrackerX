@@ -2,27 +2,57 @@
 
 An automated manga tracking infrastructure.
 
-This repository is split across different branches for different microservices, allowing each component to be deployed and scaled independently:
+---
 
-1. **`master`** — The root landing branch
-2. **`data_extraction`** — The web scraping pipeline (Selenium) that updates manga chapters and metadata.
-3. **`api`** — The FastAPI backend (Google Cloud Run) serving the scraped data.
-4. **`frontend`** — The Vite SPA frontend (Google Cloud Run) showing the UI.
+## 🌿 Repository Branch Structure
+
+This repository is split across different branches for different components of the application, allowing each microservice to be maintained and deployed independently:
+
+| Branch | Description | Tech Stack | Documentation |
+|---|---|---|---|
+| **`master`** | The landing branch containing documentation links | Markdown | [README.md](file:///D:/Code/Antigravity/MangaTrackerX/README.md) |
+| **`data_extraction`** | The background scraper & data parsing pipeline | Python, Selenium, MongoDB | [DATA_EXTRACTION.md](file:///D:/Code/Antigravity/MangaTrackerX/DATA_EXTRACTION.md) |
+| **`api`** | The backend REST API serving data to the client | FastAPI, Python, MongoDB | Housed in `api/` |
+| **`frontend`** | The primary production web application | Vite SPA, Vanilla JS, CSS | [style.css](file:///D:/Code/Antigravity/MangaTrackerX/src/style.css) |
+| **`frontend-skeomorphism`** | Interactive console styling design system | Vite SPA, Skeuomorphic CSS | [FRONTEND_SKEUOMORPHISM.md](file:///D:/Code/Antigravity/MangaTrackerX/FRONTEND_SKEUOMORPHISM.md) |
+| **`frontend-claymorphism`** | Puffy, bubble-shape styling design system | Vite SPA, Claymorphic CSS | [FRONTEND_CLAYMORPHISM.md](file:///D:/Code/Antigravity/MangaTrackerX/FRONTEND_CLAYMORPHISM.md) |
+
+---
+
+## 📖 Component Documentation
+
+To understand the core implementation details, review the detailed markdown files:
+
+1. **Backend Pipeline:** Learn how the scraper Delta checks, handles hotlink bypass, processes data in parallel, and manages mirror fallback migrations in [DATA_EXTRACTION.md](file:///D:/Code/Antigravity/MangaTrackerX/DATA_EXTRACTION.md).
+2. **Skeuomorphism Theme:** Learn how beveled edges, outset/inset buttons, LED status indicators, and metallic consoles are structured in [FRONTEND_SKEUOMORPHISM.md](file:///D:/Code/Antigravity/MangaTrackerX/FRONTEND_SKEUOMORPHISM.md).
+3. **Claymorphism Theme:** Learn how puffy clay gradient layers, multi-layered colorful shadows, and ultra-rounded bubbles are structured in [FRONTEND_CLAYMORPHISM.md](file:///D:/Code/Antigravity/MangaTrackerX/FRONTEND_CLAYMORPHISM.md).
+
+---
+
+## 🛠️ Local Development & Branch Switching
 
 To work on a specific component, checkout the corresponding branch:
 
 ```bash
+# Work on backend scraper
 git checkout data_extraction
-# or
+
+# Work on API service
 git checkout api
-# or
+
+# Work on live frontend
 git checkout frontend
+
+# Work on Skeuomorphic styling
+git checkout frontend-skeomorphism
+
+# Work on Claymorphic styling
+git checkout frontend-claymorphism
 ```
 
-> **Note on `.env` files:**
-> Because `.env` files contain sensitive passwords, they are ignored by Git. This means if you switch branches, your local `.env` file does **not** change.
-> 
-> To manage different environments locally, you and configure your scripts/tools to read them:
-> - create `.env.api` for the `api` branch
-> - create `.env.pipeline` for `data_extraction`
-> - create `.env.frontend` for `frontend`
+> ⚠️ **Note on `.env` files:**
+> Sensitive configurations (like MongoDB Atlas connection strings) are ignored by git (`.gitignore`).
+> When you switch branches, your local `.env` file does **not** change. To run services locally:
+> - Create `.env.api` for the `api` branch
+> - Create `.env.pipeline` for `data_extraction`
+> - Create `.env.frontend` for `frontend`

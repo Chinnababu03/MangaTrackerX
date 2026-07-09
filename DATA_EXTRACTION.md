@@ -54,22 +54,23 @@ The data extraction pipeline resides inside the `src/pipeline` directory and is 
 
 ---
 
-### 2. Mirror Fallback & Data Separation
+### 2. Mirror Fallback & Domain Migration
 * **File:** `src/pipeline/fetching_pagesource.py` (and `links_ingestion.py`)
 * **Logic:** If a primary manga URL (typically Clanmanhwa) returns a `404` or times out, the crawler automatically parses the slug and falls back to testing alternative mirror URLs in order:
   1. `https://coffeemanga.ink/manga/{slug}`
   2. `https://www.harimanga.co.uk/manga/{slug}`
-* **State Preservation:** To ensure we don't lose data when switching domains:
-  * We update the URL reference to the working mirror in `manga_links` and `manga_data`.
-  * We reset the `latest_chapters` list (since mirror chapter schemas/counts can vary).
-  * **Crucially, we preserve the cover image (`en_manga_image`)** downloaded from the original source so we don't end up with generic placeholder images:
+* **State Preservation & Chapter URL Migration:** When fallback mirrors are triggered, we update the main `manga_url` across `manga_links` and `manga_data` collections. 
+  * Rather than wiping `latest_chapters` or storing broken URLs, the pipeline extracts existing chapters and rewrites their scheme + netloc domain to target the new mirror domain:
     ```python
-    # Update mirror URL but preserve the cached cover art
-    manga_data_col.update_one(
-        {"manga_url": original_url},
-        {"$set": {"manga_url": working_mirror_url, "latest_chapters": []}},
-    )
+    def _swap_domain(ch_url: str) -> str:
+        """Replace old origin with new mirror origin; leave already-migrated URLs alone."""
+        if not ch_url:
+            return ch_url
+        if ch_url.startswith(old_origin):
+            return new_origin + ch_url[len(old_origin):]
+        return ch_url
     ```
+  * This preserves user read history, chapter metadata, and cover images (`en_manga_image`) while automatically correcting links to the new host.
 
 ---
 
@@ -105,15 +106,26 @@ The data extraction pipeline resides inside the `src/pipeline` directory and is 
 
 ---
 
-### 5. Multi-Threaded Processing & Backfilling
+### 5. Extraction-Time Chapter URL Resolution
+* **File:** `src/utilities/extractors.py`
+* **Logic:** Sources can return relative chapter hrefs (e.g. `/manga/title/chapter-1` or `chapter-1`). To prevent the frontend from linking to broken API endpoints, the parser resolves all chapter hrefs into guaranteed full absolute URLs at extraction time using `urljoin`:
+  ```python
+  def _resolve_href(href: str, manga_url: str) -> str:
+      if not href:
+          return ""
+      href = href.strip()
+      if href.startswith("http://") or href.startswith("https://"):
+          return href
+      if href.startswith("//"):
+          return "https:" + href
+      return urljoin(manga_url, href)
+  ```
+
+---
+
+### 6. Multi-Threaded Processing & Backfilling
 * **File:** `src/pipeline/process_manga.py`
 * **Logic:** To process files efficiently, Step 3 uses a `ThreadPoolExecutor` capped at `MAX_WORKERS = 6` to parse HTML page sources and fetch image assets concurrently in chunks of `50` documents:
   * **New Manga:** Parses full metadata, base64 images, and all chapters.
   * **Known Manga:** Only checks for chapters newer than the latest stored chapter and prepends them.
-  * **Backfilling:** Once processing completes, it writes the resolved title back to the `manga_links` collection:
-    ```python
-    collection.update_one(
-        {"manga_url": url},
-        {"$set": {"manga_title": title}},
-    )
-    ```
+  * **Backfilling:** Once processing completes, it writes the resolved title back to the `manga_links` collection.
