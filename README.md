@@ -13,7 +13,7 @@ This repository is split across different branches for different components of t
 | **`master`** | The landing branch containing documentation links | Markdown | [README.md](file:///D:/Code/Antigravity/MangaTrackerX/README.md) |
 | **`data_extraction`** | The background scraper & data parsing pipeline | Python, Selenium, MongoDB | [DATA_EXTRACTION.md](file:///D:/Code/Antigravity/MangaTrackerX/DATA_EXTRACTION.md) |
 | **`api`** | The backend REST API serving data to the client | FastAPI, Python, MongoDB | Housed in `api/` |
-| **`frontend`** | The primary production web application | Vite SPA, Vanilla JS, CSS | [style.css](file:///D:/Code/Antigravity/MangaTrackerX/src/style.css) |
+| **`frontend`** | The primary production web application | Vite SPA, Vanilla JS, CSS | [FRONTEND_ARCHITECTURE.md](file:///D:/Code/Antigravity/MangaTrackerX/FRONTEND_ARCHITECTURE.md) |
 | **`frontend-skeomorphism`** | Interactive console styling design system | Vite SPA, Skeuomorphic CSS | [FRONTEND_SKEUOMORPHISM.md](file:///D:/Code/Antigravity/MangaTrackerX/FRONTEND_SKEUOMORPHISM.md) |
 | **`frontend-claymorphism`** | Puffy, bubble-shape styling design system | Vite SPA, Claymorphic CSS | [FRONTEND_CLAYMORPHISM.md](file:///D:/Code/Antigravity/MangaTrackerX/FRONTEND_CLAYMORPHISM.md) |
 
@@ -23,9 +23,10 @@ This repository is split across different branches for different components of t
 
 To understand the core implementation details, review the detailed markdown files:
 
-1. **Backend Pipeline:** Learn how the scraper Delta checks, handles hotlink bypass, processes data in parallel, and manages mirror fallback migrations in [DATA_EXTRACTION.md](file:///D:/Code/Antigravity/MangaTrackerX/DATA_EXTRACTION.md).
-2. **Skeuomorphism Theme:** Learn how beveled edges, outset/inset buttons, LED status indicators, and metallic consoles are structured in [FRONTEND_SKEUOMORPHISM.md](file:///D:/Code/Antigravity/MangaTrackerX/FRONTEND_SKEUOMORPHISM.md).
-3. **Claymorphism Theme:** Learn how puffy clay gradient layers, multi-layered colorful shadows, and ultra-rounded bubbles are structured in [FRONTEND_CLAYMORPHISM.md](file:///D:/Code/Antigravity/MangaTrackerX/FRONTEND_CLAYMORPHISM.md).
+1. **Frontend Architecture & Logic:** Learn how SPA routing, Vite bundler compiling, Nginx Docker setups, local read history mapping, and modal form hooks are designed in [FRONTEND_ARCHITECTURE.md](file:///D:/Code/Antigravity/MangaTrackerX/FRONTEND_ARCHITECTURE.md).
+2. **Backend Pipeline:** Learn how the scraper Delta checks, handles hotlink bypass, processes data in parallel, and manages mirror fallback migrations in [DATA_EXTRACTION.md](file:///D:/Code/Antigravity/MangaTrackerX/DATA_EXTRACTION.md).
+3. **Skeuomorphism Theme:** Learn how beveled edges, outset/inset buttons, LED status indicators, and metallic consoles are structured in [FRONTEND_SKEUOMORPHISM.md](file:///D:/Code/Antigravity/MangaTrackerX/FRONTEND_SKEUOMORPHISM.md).
+4. **Claymorphism Theme:** Learn how puffy clay gradient layers, multi-layered colorful shadows, and ultra-rounded bubbles are structured in [FRONTEND_CLAYMORPHISM.md](file:///D:/Code/Antigravity/MangaTrackerX/FRONTEND_CLAYMORPHISM.md).
 
 ---
 
