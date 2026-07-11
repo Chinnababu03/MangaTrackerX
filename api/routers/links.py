@@ -5,7 +5,10 @@ Endpoints for managing the LINKS collection.
 """
 
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Query
+import os
+import json
+import urllib.request
+from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
 from pymongo.errors import DuplicateKeyError
 from fastapi_cache import FastAPICache
 
@@ -15,8 +18,36 @@ from api.models import LinkCreate, LinkResponse
 router = APIRouter(prefix="/links", tags=["links"])
 
 
+def trigger_github_workflow():
+    token = os.getenv("GITHUB_TOKEN")
+    if not token:
+        print("⚠️ GITHUB_TOKEN not set; skipping on-demand scraper trigger.")
+        return
+
+    url = "https://api.github.com/repos/Chinnababu03/MangaTrackerX/dispatches"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "MangaTrackerX-API"
+    }
+    payload = {"event_type": "on_track_request"}
+
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=headers,
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=10) as response:
+            status = response.getcode()
+            print(f"🚀 GitHub Repository Dispatch triggered successfully, status code: {status}")
+    except Exception as e:
+        print(f"❌ Failed to trigger GitHub Repository Dispatch: {e}")
+
+
 @router.post("", response_model=LinkResponse, status_code=201)
-async def add_link(payload: LinkCreate):
+async def add_link(payload: LinkCreate, background_tasks: BackgroundTasks):
     """
     Insert a new manga URL into the LINKS collection.
 
@@ -36,6 +67,10 @@ async def add_link(payload: LinkCreate):
             await FastAPICache.clear(namespace="mangax")
         except Exception:
             pass
+        
+        # Trigger background scraper run on GitHub Actions
+        background_tasks.add_task(trigger_github_workflow)
+
         return LinkResponse(
             manga_url=url,
             status="inserted",
