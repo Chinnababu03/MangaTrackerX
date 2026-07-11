@@ -18,7 +18,7 @@ from api.models import LinkCreate, LinkResponse
 router = APIRouter(prefix="/links", tags=["links"])
 
 
-def trigger_github_workflow():
+def trigger_github_workflow(manga_url: str):
     token = os.getenv("GITHUB_TOKEN")
     if not token:
         print("⚠️ GITHUB_TOKEN not set; skipping on-demand scraper trigger.")
@@ -30,7 +30,12 @@ def trigger_github_workflow():
         "Accept": "application/vnd.github.v3+json",
         "User-Agent": "MangaTrackerX-API"
     }
-    payload = {"event_type": "on_track_request"}
+    payload = {
+        "event_type": "on_track_request",
+        "client_payload": {
+            "url": manga_url
+        }
+    }
 
     try:
         req = urllib.request.Request(
@@ -69,7 +74,7 @@ async def add_link(payload: LinkCreate, background_tasks: BackgroundTasks):
             pass
         
         # Trigger background scraper run on GitHub Actions
-        background_tasks.add_task(trigger_github_workflow)
+        background_tasks.add_task(trigger_github_workflow, url)
 
         return LinkResponse(
             manga_url=url,
