@@ -7,6 +7,7 @@ Endpoints for managing the LINKS collection.
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query
 from pymongo.errors import DuplicateKeyError
+from fastapi_cache import FastAPICache
 
 from api.db import get_collection
 from api.models import LinkCreate, LinkResponse
@@ -31,6 +32,10 @@ async def add_link(payload: LinkCreate):
             "manga_title":  None,
             "date_added":   datetime.utcnow(),
         })
+        try:
+            await FastAPICache.clear(namespace="mangax")
+        except Exception:
+            pass
         return LinkResponse(
             manga_url=url,
             status="inserted",
@@ -72,6 +77,11 @@ async def delete_link(url: str = Query(..., description="The manga URL to untrac
 
         if links_res.deleted_count == 0 and manga_res.deleted_count == 0:
             raise HTTPException(status_code=404, detail="Manga URL not found in tracking list.")
+
+        try:
+            await FastAPICache.clear(namespace="mangax")
+        except Exception:
+            pass
 
         return LinkResponse(
             manga_url=url,
