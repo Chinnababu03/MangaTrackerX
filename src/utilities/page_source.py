@@ -83,8 +83,10 @@ def get_page_source(
         if "kunmanga" in manga_url:
             time.sleep(5)
 
-        # 2. Wait for chapter list or summary panel — whichever appears first
-        ele = page.wait.eles_loaded("css:div.page-content-listing, div.tab-summary", timeout=timeout)
+        # 2. Wait for enough manga metadata to prove the page is usable.
+        # Chapter lists often hydrate after the summary block in headless CI, so
+        # do not treat the summary alone as proof that chapters are ready.
+        ele = page.wait.eles_loaded("css:div.tab-summary, div.post-title h1, h1", timeout=timeout)
 
         if not ele:
             logger.warning(
@@ -92,6 +94,19 @@ def get_page_source(
                 "Page may be a 404, Cloudflare blocked, or use an unsupported layout."
             )
             return None
+
+        # 3. Give the dynamic chapter list its own wait window. We still return
+        # metadata HTML if chapters do not appear, but this avoids returning too
+        # early in GitHub Actions when the summary panel loads first.
+        try:
+            chapters_loaded = page.wait.eles_loaded("css:.wp-manga-chapter a", timeout=timeout)
+            if not chapters_loaded:
+                logger.warning(
+                    f"[page_source] Manga metadata loaded for {manga_url}, but no chapter links "
+                    f"appeared within {timeout}s."
+                )
+        except Exception as wait_exc:
+            logger.warning(f"[page_source] Chapter wait failed for {manga_url}: {wait_exc}")
 
         return page.html
 
