@@ -38,4 +38,10 @@ jobs:
           MANGA_DATA: manga_data
           HEADLESS: "true"           # Headless mode is required for GitHub runner execution
         run: |
-          python main.py
+          if [ -n "${{ github.event.client_payload.url }}" ]; then
+            echo "🚀 Running on-demand single URL scrape: ${{ github.event.client_payload.url }}"
+            python main.py --url "${{ github.event.client_payload.url }}"
+          else
+            echo "📅 Running scheduled full sync..."
+            python main.py
+          fi
