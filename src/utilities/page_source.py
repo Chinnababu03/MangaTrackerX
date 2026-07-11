@@ -24,6 +24,13 @@ def create_browser() -> ChromiumPage:
     """
     co = ChromiumOptions()
     co.headless(_HEADLESS)
+    
+    # Linux and headless environment compatibility flags
+    if _HEADLESS or os.name != "nt":
+        co.set_argument("--no-sandbox")
+        co.set_argument("--disable-gpu")
+        co.set_argument("--disable-dev-shm-usage")
+        
     return ChromiumPage(co)
 
 
