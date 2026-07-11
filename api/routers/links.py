@@ -5,7 +5,7 @@ Endpoints for managing the LINKS collection.
 """
 
 from datetime import datetime
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pymongo.errors import DuplicateKeyError
 
 from api.db import get_collection
@@ -52,3 +52,34 @@ async def list_links():
     col = get_collection("LINKS")
     cursor = col.find({}, {"manga_url": 1, "_id": 0})
     return [doc["manga_url"] async for doc in cursor]
+
+
+@router.delete("", response_model=LinkResponse)
+async def delete_link(url: str = Query(..., description="The manga URL to untrack")):
+    """
+    Remove a manga URL from tracking.
+    
+    Deletes the link from both the LINKS and MANGA_DATA collections.
+    """
+    url = url.rstrip("/")
+    links_col = get_collection("LINKS")
+    manga_col = get_collection("MANGA_DATA")
+
+    try:
+        # Delete from both collections
+        links_res = await links_col.delete_one({"manga_url": url})
+        manga_res = await manga_col.delete_one({"manga_url": url})
+
+        if links_res.deleted_count == 0 and manga_res.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Manga URL not found in tracking list.")
+
+        return LinkResponse(
+            manga_url=url,
+            status="deleted",
+            message=f"'{url}' successfully removed from library.",
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
