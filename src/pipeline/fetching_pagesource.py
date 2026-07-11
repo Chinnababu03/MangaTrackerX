@@ -30,19 +30,26 @@ REQUEST_DELAY = 3
 COMMIT_EVERY = 50
 
 
-def fetch_pagesources():
+def fetch_pagesources(single_url: str | None = None):
     """
     Main entry point for Step 2.
 
     Reads all URLs from LINKS, skips those already in PAGESOURCE,
     and fetches + stores the page source for the remainder.
+    If single_url is provided, it only fetches that specific URL.
     """
     links_col      = get_collection("get_links")
     pagesource_col = get_collection("get_pagesource")
 
-    all_urls    = {doc["manga_url"] for doc in links_col.find({}, {"manga_url": True, "_id": False})}
-    cached_urls = {doc["manga_url"] for doc in pagesource_col.find({}, {"manga_url": True, "_id": False})}
-    pending     = all_urls - cached_urls
+    if single_url:
+        single_url = single_url.rstrip("/")
+        pending = {single_url}
+        all_urls = {single_url}
+        cached_urls = set()
+    else:
+        all_urls    = {doc["manga_url"] for doc in links_col.find({}, {"manga_url": True, "_id": False})}
+        cached_urls = {doc["manga_url"] for doc in pagesource_col.find({}, {"manga_url": True, "_id": False})}
+        pending     = all_urls - cached_urls
 
     summary = {
         "total_links": len(all_urls),
@@ -204,4 +211,8 @@ def fetch_pagesources():
 
 
 if __name__ == "__main__":
-    fetch_pagesources()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--url", help="Scrape a single URL only")
+    args = parser.parse_args()
+    fetch_pagesources(args.url)
