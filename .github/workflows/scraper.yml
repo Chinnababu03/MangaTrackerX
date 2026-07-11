@@ -1,0 +1,41 @@
+name: Manga Scraper Pipeline
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'              # Runs weekly on Sunday at midnight
+  repository_dispatch:               # Runs instantly on-demand when triggered by API
+    types: [on_track_request]
+  workflow_dispatch:                 # Allows manual run from GitHub Web UI
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: data_extraction       # Check out the branch containing the scraper code
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Scraper
+        env:
+          MONGODB_USERNAME: ${{ secrets.MONGODB_USERNAME }}
+          MONGODB_PASSWORD: ${{ secrets.MONGODB_PASSWORD }}
+          MONGODB_DATABASE: ${{ secrets.MONGODB_DATABASE }}
+          MONGODB_CLUSTER: ${{ secrets.MONGODB_CLUSTER }}
+          LINKS: manga_links
+          PAGESOURCE: manga_pagesource
+          MANGA_DATA: manga_data
+          HEADLESS: "true"           # Headless mode is required for GitHub runner execution
+        run: |
+          python main.py
