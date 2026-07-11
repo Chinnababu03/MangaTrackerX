@@ -1,5 +1,6 @@
 // pages/manga-detail.js — Immersive detail page with blurred banner
 import { api } from '../api.js';
+import { showToast } from '../toast.js';
 
 function imgSrc(manga) {
   if (manga?.en_manga_image) return `data:image/jpeg;base64,${manga.en_manga_image}`;
@@ -175,7 +176,15 @@ export async function renderMangaDetail(title) {
                 <a href="${chapters[0]._resolvedUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary"
                   onclick="window._detailMarkRead('${chapters[0].chapter_num}','${chapters[0]._resolvedUrl}');event.preventDefault();">
                   Latest Chapter
-                </a>` : ''}
+                </a>
+                <button id="btn-mark-all" class="btn btn-secondary" aria-label="Mark all chapters as read">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  Mark All Read
+                </button>` : ''}
+                <button id="btn-untrack" class="btn btn-untrack" style="background:var(--rose); color:#fff; border-color:var(--rose);" aria-label="Untrack Series">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                  Untrack
+                </button>
               </div>
             </div>
           </div>
@@ -192,6 +201,52 @@ export async function renderMangaDetail(title) {
       </div>`;
 
     renderChapters(chapters, manga.manga_title);
+
+    // Mark all as read listener
+    document.getElementById('btn-mark-all')?.addEventListener('click', () => {
+      const history = JSON.parse(localStorage.getItem('mangaReadHistory') || '{}');
+      if (!history[manga.manga_title]) history[manga.manga_title] = [];
+      
+      chapters.forEach(ch => {
+        const numStr = String(ch.chapter_num);
+        if (!history[manga.manga_title].includes(numStr)) {
+          history[manga.manga_title].push(numStr);
+        }
+      });
+      
+      localStorage.setItem('mangaReadHistory', JSON.stringify(history));
+      showToast('Marked Read', `All ${chapters.length} chapters marked as read.`, 'success');
+      
+      // Re-render only the chapters list immediately
+      renderChapters(chapters, manga.manga_title);
+    });
+
+    // Untrack action listener
+    document.getElementById('btn-untrack')?.addEventListener('click', async () => {
+      const confirmUntrack = confirm(`Are you sure you want to untrack "${manga.manga_title}" and remove it from your library?`);
+      if (!confirmUntrack) return;
+
+      const btn = document.getElementById('btn-untrack');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Untracking…';
+      }
+
+      try {
+        await api.deleteManga(manga.manga_url);
+        showToast('Untracked', `"${manga.manga_title}" was removed from library.`, 'success');
+        window._updateNavCount(null);
+        // SPA routing to library
+        window.history.pushState({}, '', '/manga');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      } catch (err) {
+        showToast('Error', err.message || 'Failed to untrack series.', 'error');
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> Untrack';
+        }
+      }
+    });
 
     // Parallax scroll effect for banner
     const bannerBg = app.querySelector('.detail-banner-bg');

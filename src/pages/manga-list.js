@@ -101,7 +101,10 @@ function buildCard(m, idx, isListView) {
       </div>
 
       <div class="card-body">
-        <div class="card-title">${m.manga_title}</div>
+        <div class="card-title">
+          ${m.manga_title}
+          ${hasUnread(m) ? `<span class="unread-badge-inline">New</span>` : ''}
+        </div>
         <div class="card-site">${safeHost(m.manga_url)}</div>
       </div>
 
@@ -138,6 +141,16 @@ export async function renderMangaList() {
             <span class="sort-arrow" aria-hidden="true">▼</span>
           </div>
 
+          <!-- Status Filter -->
+          <div class="sort-wrap">
+            <select id="manga-status" class="sort-select" aria-label="Filter by Status">
+              <option value="all">All Status</option>
+              <option value="ongoing">Ongoing</option>
+              <option value="completed">Completed</option>
+            </select>
+            <span class="sort-arrow" aria-hidden="true">▼</span>
+          </div>
+
           <!-- Search -->
           <div class="search-wrap">
             <span class="search-icon-wrap" aria-hidden="true">
@@ -145,6 +158,7 @@ export async function renderMangaList() {
             </span>
             <input type="search" id="manga-search" class="search-input"
               placeholder="Search titles…" autocomplete="off" aria-label="Search manga">
+            <button id="search-clear" class="search-clear-btn" aria-label="Clear search" style="display:none;">&#x2715;</button>
           </div>
 
           <!-- View toggle -->
@@ -176,6 +190,7 @@ export async function renderMangaList() {
   let fullList    = [];
   let currentSort = 'default';
   let currentQuery= '';
+  let currentStatus = 'all';
   let isListView  = false;
 
   const getGrid  = () => document.getElementById('manga-grid');
@@ -183,9 +198,18 @@ export async function renderMangaList() {
 
   // ── Sort & filter ────────────────────────────────────────────────────
   const applyFilters = () => {
-    let list = fullList.filter(m =>
-      m.manga_title.toLowerCase().includes(currentQuery)
-    );
+    let list = fullList.filter(m => {
+      const matchQuery = m.manga_title.toLowerCase().includes(currentQuery);
+      
+      let matchStatus = true;
+      if (currentStatus === 'ongoing') {
+        matchStatus = m.manga_status?.toLowerCase().includes('ongoing');
+      } else if (currentStatus === 'completed') {
+        matchStatus = m.manga_status?.toLowerCase().includes('completed');
+      }
+      
+      return matchQuery && matchStatus;
+    });
 
     list.sort((a, b) => {
       if (currentSort === 'unread') {
@@ -214,22 +238,26 @@ export async function renderMangaList() {
 
     if (count) count.textContent = `${list.length} series`;
 
-    if (list.length === 0) {
-      grid.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">📭</div>
-          <div class="empty-title">No manga found</div>
-          <div class="empty-desc">Try a different search term or track a new series.</div>
-        </div>`;
-      return;
-    }
+    grid.style.opacity = '0';
 
-    grid.innerHTML = list.map((m, i) => buildCard(m, i, isListView)).join('');
+    setTimeout(() => {
+      if (list.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <div class="empty-title">No manga found</div>
+            <div class="empty-desc">Try a different search term or track a new series.</div>
+          </div>`;
+      } else {
+        grid.innerHTML = list.map((m, i) => buildCard(m, i, isListView)).join('');
+      }
 
-    // Stagger visibility
-    requestAnimationFrame(() => {
-      grid.querySelectorAll('.manga-card').forEach(c => c.classList.add('visible'));
-    });
+      grid.style.opacity = '1';
+      // Stagger visibility
+      requestAnimationFrame(() => {
+        grid.querySelectorAll('.manga-card').forEach(c => c.classList.add('visible'));
+      });
+    }, 150);
   };
 
   // ── Fetch data ────────────────────────────────────────────────────────
@@ -240,7 +268,17 @@ export async function renderMangaList() {
 
     // Events
     let searchTimeout;
-    document.getElementById('manga-search')?.addEventListener('input', e => {
+    const searchInput = document.getElementById('manga-search');
+    const clearBtn = document.getElementById('search-clear');
+    
+    const updateClearBtn = () => {
+      if (clearBtn) {
+        clearBtn.style.display = searchInput?.value ? 'flex' : 'none';
+      }
+    };
+
+    searchInput?.addEventListener('input', e => {
+      updateClearBtn();
       clearTimeout(searchTimeout);
       searchTimeout = setTimeout(() => {
         currentQuery = e.target.value.toLowerCase().trim();
@@ -248,8 +286,23 @@ export async function renderMangaList() {
       }, 250);
     });
 
+    clearBtn?.addEventListener('click', () => {
+      if (searchInput) {
+        searchInput.value = '';
+        currentQuery = '';
+        updateClearBtn();
+        applyFilters();
+        searchInput.focus();
+      }
+    });
+
     document.getElementById('manga-sort')?.addEventListener('change', e => {
       currentSort = e.target.value;
+      applyFilters();
+    });
+
+    document.getElementById('manga-status')?.addEventListener('change', e => {
+      currentStatus = e.target.value;
       applyFilters();
     });
 

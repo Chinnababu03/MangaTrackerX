@@ -11,7 +11,34 @@ import { renderHome }        from './pages/home.js';
 import { renderMangaList }   from './pages/manga-list.js';
 import { renderMangaDetail } from './pages/manga-detail.js';
 import { openAddModal }      from './modal.js';
+import { api }               from './api.js';
 import appLogoUrl            from '../assets/images/excited.png';
+
+// Library count caching
+let cachedCount = null;
+async function getLibraryCount() {
+  if (cachedCount !== null) return cachedCount;
+  try {
+    const list = await api.getMangaList(0, 200);
+    cachedCount = list.length;
+    return cachedCount;
+  } catch {
+    return null;
+  }
+}
+window._updateNavCount = (count) => {
+  cachedCount = count;
+  const badge = document.getElementById('nav-count');
+  if (badge) {
+    if (count === null) {
+      badge.style.display = 'none';
+    } else {
+      badge.textContent = count;
+      badge.style.display = 'inline-flex';
+    }
+  }
+};
+
 
 // ── Navbar ────────────────────────────────────────────────────────────────
 function renderNav(active) {
@@ -30,7 +57,9 @@ function renderNav(active) {
 
       <div class="nav-links" id="nav-links">
         <a href="/"      class="${active === 'home'  ? 'active' : ''}" aria-current="${active === 'home'  ? 'page' : 'false'}">Home</a>
-        <a href="/manga" class="${active === 'manga' ? 'active' : ''}" aria-current="${active === 'manga' ? 'page' : 'false'}">Library</a>
+        <a href="/manga" class="${active === 'manga' ? 'active' : ''}" aria-current="${active === 'manga' ? 'page' : 'false'}">
+          Library <span id="nav-count" class="nav-count-badge" style="display:none;"></span>
+        </a>
       </div>
 
       <div class="nav-right">
@@ -74,6 +103,15 @@ function renderNav(active) {
       links.classList.remove('open');
     }
   }, { once: false });
+
+  // Populates count badge asynchronously
+  getLibraryCount().then(count => {
+    const badge = document.getElementById('nav-count');
+    if (badge && count !== null) {
+      badge.textContent = count;
+      badge.style.display = 'inline-flex';
+    }
+  });
 }
 
 // ── Router ────────────────────────────────────────────────────────────────

@@ -37,6 +37,9 @@ export function openAddModal() {
             required
             aria-required="true"
           />
+          <div class="modal-help-text">
+            💡 Supports any manga/manhua URL using the <strong>Madara theme</strong> (e.g. ClanManhwa, CoffeeManga, Harimanga, ZinManga, etc.).
+          </div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" id="modal-cancel" style="flex:1">Cancel</button>
@@ -57,6 +60,7 @@ export function openAddModal() {
 
   const close = () => {
     backdrop.classList.remove('open');
+    document.removeEventListener('keydown', onKeydown);
     setTimeout(() => backdrop.remove(), 280);
   };
 
@@ -65,7 +69,7 @@ export function openAddModal() {
   backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
 
   // Trap Escape key
-  const onKeydown = e => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKeydown); } };
+  const onKeydown = e => { if (e.key === 'Escape') close(); };
   document.addEventListener('keydown', onKeydown);
 
   document.getElementById('modal-form').onsubmit = async (e) => {
@@ -81,6 +85,7 @@ export function openAddModal() {
       const res = await api.addLink(url);
       if (res.status === 'inserted') {
         showToast('Added!', 'Manga added to your library. Scraping in progress…', 'success');
+        window._updateNavCount(null);
         close();
         if (window.location.pathname === '/manga') setTimeout(() => window.location.reload(), 1500);
       } else {

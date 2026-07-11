@@ -33,6 +33,17 @@ export const api = {
     return res.json();
   },
 
+  async deleteManga(url) {
+    const res = await fetch(`${BASE_URL}/links?url=${encodeURIComponent(url)}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to delete manga' }));
+      throw new Error(err.detail || 'Failed to delete manga from tracking list');
+    }
+    return res.json();
+  },
+
   async health() {
     const res = await fetch(`${BASE_URL}/health`);
     if (!res.ok) throw new Error('API is down');
